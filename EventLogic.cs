@@ -171,7 +171,7 @@ namespace NaokaGo
         /// <param name="actorNr">The id of the sending actor.</param>
         /// <param name="data">The custom data to wrap.</param>
         /// <returns></returns>
-        private Dictionary<byte, object> _EventDataWrapper(int actorNr, object data)
+        public Dictionary<byte, object> _EventDataWrapper(int actorNr, object data)
         {
             return new Dictionary<byte, object>
             {

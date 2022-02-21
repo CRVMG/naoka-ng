@@ -14,7 +14,7 @@ namespace NaokaGo
                 {"currentAvatarImageUrl", user.CurrentAvatarImageUrl},
                 {"currentAvatarThumbnailImageUrl", user.CurrentAvatarThumbnailImageUrl},
                 {"userIcon", user.UserIcon},
-                {"lastPlatform", user.LastPlatform},
+                {"last_platform", user.Last_platform},
                 {"status", user.Status},
                 {"statusDescription", user.StatusDescription},
                 {"bio", user.Bio},

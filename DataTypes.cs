@@ -74,7 +74,7 @@ namespace NaokaGo
         public string CurrentAvatarImageUrl;
         public string CurrentAvatarThumbnailImageUrl;
         public string UserIcon;
-        public string LastPlatform;
+        public string Last_platform;
         public string Status;
         public string StatusDescription;
         public string Bio;

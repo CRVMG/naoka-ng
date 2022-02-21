@@ -101,6 +101,12 @@ namespace NaokaGo
             int ipAddressCount = 0;
             foreach (var actorInternalProp in naokaConfig.ActorsInternalProps)
             {
+                if ((string) actorInternalProp.Value["userId"] == userId && !jwtValidationResult.User.Tags.Contains("admin_moderator"))
+                {
+                    info.Fail("User is already in this room.");
+                    return;
+                }
+
                 if ((string)actorInternalProp.Value["ip"] == ipAddress)
                     ++ipAddressCount;
 
@@ -207,7 +213,6 @@ namespace NaokaGo
                 case 5: // InitialSyncFinished
                 case 6: // ProcessEvent
                 case 7: // Serialization
-                    // Events 4, 5, 6, and 7 are directly passed through without further processing.
                     info.Continue();
                     break;
 
@@ -298,15 +303,12 @@ namespace NaokaGo
                 switch (info.Request.EvCode)
                 {
                     case 202: // TODO: Force instantiation at 0,0,0. | Custom Types.
-                        if (((Hashtable)info.Request.Parameters[245]).Contains((byte)0) &&
-                            (string)((Hashtable)info.Request.Parameters[245])[0] == "VRCPlayer" && 
-                            (bool)naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"])
-                        {
-                            info.Fail("Already instatiated");
+                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && (bool)naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"]) {
+                            info.Fail("Already Instantiated");
                             return;
                         }
 
-                        if ((string) ((Hashtable) info.Request.Parameters[245])[0] == "VRCPlayer")
+                        if ((string) ((Hashtable) info.Request.Parameters[245])[(byte)0] == "VRCPlayer")
                             naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"] = true;
                         info.Request.Cache = CacheOperations.AddToRoomCache;
 
