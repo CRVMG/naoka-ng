@@ -67,6 +67,13 @@ namespace NaokaGo
         public PhotonPropAvatarDict FavatarDict;
     }
 
+    public class PhotonRuntimeRemoteConfig
+    {
+        public Dictionary<int, int> RateLimitList;
+        public bool RateLimitUnknownBool;
+        public int MaxAccountsPerIPAddress;
+    }
+
     public class PhotonPropUser
     {
         public string Id;

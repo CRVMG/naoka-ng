@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Photon.Hive.Plugin;
 
@@ -42,11 +44,27 @@ namespace NaokaGo
             };
             naokaConfig.RuntimeConfig = new Dictionary<string, object>()
             {
+                {"configuredRateLimits", new Dictionary<byte, int>(){}},
+                {"ratelimiterBoolean", false},
                 {"maxAccPerIp", 5},
             };
 
-            // Task.Run(_EventLogic.RunEvent8Timer);
+            var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/getConfig?secret={naokaConfig.ApiConfig["PhotonSecret"]}";
+            var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
+            var remoteConfig = JsonConvert.DeserializeObject<PhotonRuntimeRemoteConfig>(apiResponse);
+
             
+            foreach (var kvp in remoteConfig.RateLimitList)
+            {
+                ((Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"])[(byte)kvp.Key] = kvp.Value;
+            }
+
+            naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
+            naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccountsPerIPAddress;
+
+            // Task.Run(_EventLogic.RunEvent8Timer);
+            Task.Run(_EventLogic.RunEvent35Timer);
+
             return base.SetupInstance(host, config, out errorMsg);
         }
 
@@ -83,6 +101,7 @@ namespace NaokaGo
             info.Request.ActorProperties = newProperties;
             info.Continue();
             _EventLogic.SendModerationRequestToActor(1);
+            _EventLogic.SendRatelimiterValues(1, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
         }
 
         public override void OnJoin(IJoinGameCallInfo info)
@@ -136,6 +155,7 @@ namespace NaokaGo
             
             _EventLogic.SendModerationRequestToActor(info.ActorNr);
             _EventLogic.SendModerationRequestToAllForActor(info.ActorNr);
+            _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
         }
 
         public override void OnCloseGame(ICloseGameCallInfo info)
@@ -189,6 +209,11 @@ namespace NaokaGo
                     return;
 
                 case 1: // VoiceDataReceived | uSpeak
+                    if (((byte[])info.Request.Data).Length > 1023)
+                    {
+                        info.Fail("uSpeak data too long.");
+                        return;
+                    }
                     info.Continue();
                     break;
 
@@ -290,6 +315,20 @@ namespace NaokaGo
                     info.Cancel();
                     break;
 
+                case 42: // Updating AvatarEyeHeight property
+                    // TODO: Filter out anything that is irrelevant to this event. At the moment, it acts as if its a SetProperties.
+                    //       I uh, have no clue what *could* be relevant, what I *do* know is, is `avatarEyeHeight`.
+                    _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data, out var temporaryPropertiesHT, out var propertiesError);
+                    if (propertiesError != "")
+                    {
+                        info.Fail(propertiesError);
+                        return;
+                    }
+                    
+                    naokaConfig.Host.SetProperties(info.ActorNr, temporaryPropertiesHT, null, true);
+
+                    info.Cancel();
+                    break;
                 default: // Unknown event code; Log and cancel.
                     if (info.Request.EvCode < 200)
                     {

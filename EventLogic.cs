@@ -16,6 +16,29 @@ namespace NaokaGo
         public NaokaConfig naokaConfig;
 
         /// <summary>
+        /// SendRatelimiterValues sends event 34 to the target actorNr in order to configure the client rate-limiter.
+        /// </summary>
+        /// <param name="actorNr">The actorNr of the target player.</param>
+        /// <param name="ratelimitValues">A dictionary of the event code, and its rate-limit per second.</param>
+        /// <param name="ratelimitBoolean">Unknown.</param>
+        public void SendRatelimiterValues(int actorNr, Dictionary<byte, int> ratelimitValues, bool ratelimitBoolean)
+        {
+            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
+            {
+                {0, ratelimitValues},
+                {2, ratelimitBoolean},
+            });
+            
+            naokaConfig.Host.BroadcastEvent(
+                new List<int> { actorNr },
+                0,
+                34,
+                data,
+                0
+            );
+        }
+        
+        /// <summary>
         /// PrepareProperties is used to prepare an actor's property hashtable.
         /// </summary>
         /// <param name="actorNr">The actorNr present in the request.</param>
