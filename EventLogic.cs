@@ -212,6 +212,7 @@ namespace NaokaGo
             
             var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/user?secret={naokaConfig.ApiConfig["PhotonSecret"]}&userId={userId}";
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
+            naokaConfig.Logger.Warn(apiResponse);
             
             var newProperties = JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
             if (newProperties != null && newProperties.Ip == "notset")
@@ -252,6 +253,25 @@ namespace NaokaGo
                         0,
                         8,
                         _EventDataWrapper(0, data.ToArray()),
+                        0
+                    );
+                }
+
+                await Task.Delay(1000);
+            }
+        }
+
+        public async void RunEvent35Timer()
+        {
+            while (true)
+            {
+                foreach (var a in naokaConfig.ActorsInternalProps)
+                {
+                    naokaConfig.Host.BroadcastEvent(
+                        new List<int> {a.Key},
+                        0,
+                        35,
+                        _EventDataWrapper(0, new Dictionary<byte,object>(){}),
                         0
                     );
                 }

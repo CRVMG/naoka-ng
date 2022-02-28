@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using Photon.Hive.Plugin;
 
 namespace NaokaGo
@@ -293,6 +294,7 @@ namespace NaokaGo
                     if (info.Request.EvCode < 200)
                     {
                         naokaConfig.Logger.Warn($"[Naoka]: Unknown Event code `{info.Request.EvCode}`.");
+                        naokaConfig.Logger.Warn($"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
                         info.Cancel();
                     }
                     break;

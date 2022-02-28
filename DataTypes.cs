@@ -59,6 +59,7 @@ namespace NaokaGo
 
     public class PhotonValidateJoinJWTResponse
     {
+        public string Time;
         public bool Valid;
         public string Ip;
         public PhotonPropUser User;
