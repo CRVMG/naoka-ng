@@ -235,8 +235,7 @@ namespace NaokaGo
             
             var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/user?secret={naokaConfig.ApiConfig["PhotonSecret"]}&userId={userId}";
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
-            naokaConfig.Logger.Warn(apiResponse);
-            
+
             var newProperties = JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
             if (newProperties != null && newProperties.Ip == "notset")
                 newProperties.Ip = currentIp;
