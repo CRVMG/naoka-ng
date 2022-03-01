@@ -289,7 +289,7 @@ namespace NaokaGo
             while (true)
             {
                 foreach (var a in naokaConfig.ActorsInternalProps)
-                {
+                { // TODO: Look into Event 35's triggers, as well as its return. Pretty sure this should be an array.
                     naokaConfig.Host.BroadcastEvent(
                         new List<int> {a.Key},
                         0,

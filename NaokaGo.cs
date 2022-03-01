@@ -201,6 +201,12 @@ namespace NaokaGo
 
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
         {
+            if (((byte[])info.Request.Data).Length > 1500)
+            { // Hard cap for event data length.
+                info.Fail();
+                return;
+            }
+            
             switch (info.Request.EvCode)
             {
                 case 0: // Unused event code. Trigger an alert if someone attempts to use this.
@@ -209,11 +215,6 @@ namespace NaokaGo
                     return;
 
                 case 1: // VoiceDataReceived | uSpeak
-                    if (((byte[])info.Request.Data).Length > 1023)
-                    {
-                        info.Fail("uSpeak data too long.");
-                        return;
-                    }
                     info.Continue();
                     break;
 
@@ -343,7 +344,7 @@ namespace NaokaGo
             {
                 switch (info.Request.EvCode)
                 {
-                    case 202: // TODO: Force instantiation at 0,0,0. | Custom Types.
+                    case 202:
                         if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && (bool)naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"]) {
                             info.Fail("Already Instantiated");
                             return;
@@ -352,6 +353,10 @@ namespace NaokaGo
                         if ((string) ((Hashtable) info.Request.Parameters[245])[(byte)0] == "VRCPlayer")
                             naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"] = true;
                         info.Request.Cache = CacheOperations.AddToRoomCache;
+                        
+                        // Force instantiation at 0,0,0 by removing the Vec3 and Quaternion types from the request.
+                        ((Hashtable)info.Request.Parameters[245]).Remove((byte)1);
+                        ((Hashtable)info.Request.Parameters[245]).Remove((byte)2);
 
                         break;
                 }
