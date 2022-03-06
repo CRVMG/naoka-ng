@@ -293,7 +293,7 @@ namespace NaokaGo
                         new List<int> {a.Key},
                         0,
                         35,
-                        _EventDataWrapper(0, new Dictionary<byte,object>(){}),
+                        _EventDataWrapper(0, null),
                         0
                     );
                 }

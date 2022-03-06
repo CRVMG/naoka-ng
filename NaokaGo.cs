@@ -209,11 +209,6 @@ namespace NaokaGo
                     return;
 
                 case 1: // VoiceDataReceived | uSpeak
-                    if (((byte[])info.Request.Data).Length > 1500)
-                    { // Hard cap for event data length.
-                        info.Fail();
-                        return;
-                    }
                     info.Continue();
                     break;
 
@@ -239,11 +234,6 @@ namespace NaokaGo
                 case 5: // InitialSyncFinished
                 case 6: // ProcessEvent
                 case 7: // Serialization
-                    if (((byte[])info.Request.Data).Length > 1500)
-                    { // Hard cap for event data length.
-                        info.Fail();
-                        return;
-                    }
                     info.Continue();
                     break;
 
@@ -275,11 +265,6 @@ namespace NaokaGo
 
                 case 9: // Udon, AV3Sync, BigData/ChairSync.
                 case 15: // BigData/ChairSync? (Some sources say it's this, while others say it's 9).
-                    if (((byte[])info.Request.Data).Length > 1500)
-                    { // Hard cap for event data length.
-                        info.Fail();
-                        return;
-                    }
                     info.Continue();
                     break;
 
