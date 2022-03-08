@@ -32,8 +32,7 @@ namespace NaokaGo
 
         public override bool SetupInstance(IPluginHost host, Dictionary<string, string> config, out string errorMsg)
         {
-            RegisterCustomTypes();
-            _EventLogic.naokaConfig = naokaConfig;
+            _EventLogic.Setup(naokaConfig);
             naokaConfig.Logger = host.CreateLogger(Name);
             naokaConfig.Host = host;
             naokaConfig.Config = config;
@@ -44,7 +43,7 @@ namespace NaokaGo
             };
             naokaConfig.RuntimeConfig = new Dictionary<string, object>()
             {
-                {"configuredRateLimits", new Dictionary<byte, int>(){}},
+                {"configuredRateLimits", new Dictionary<byte, int>()},
                 {"ratelimiterBoolean", false},
                 {"maxAccPerIp", 5},
             };
@@ -53,14 +52,18 @@ namespace NaokaGo
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
             var remoteConfig = JsonConvert.DeserializeObject<PhotonRuntimeRemoteConfig>(apiResponse);
 
-            
-            foreach (var kvp in remoteConfig.RateLimitList)
-            {
-                ((Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"])[(byte)kvp.Key] = kvp.Value;
-            }
 
-            naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
-            naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccountsPerIPAddress;
+            if (remoteConfig != null)
+            {
+                foreach (var kvp in remoteConfig.RateLimitList)
+                {
+                    ((Dictionary<byte, int>) naokaConfig.RuntimeConfig["configuredRateLimits"])[(byte) kvp.Key] =
+                        kvp.Value;
+                }
+
+                naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
+                naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccountsPerIPAddress;
+            }
 
             // Task.Run(_EventLogic.RunEvent8Timer);
             Task.Run(_EventLogic.RunEvent35Timer);
@@ -73,7 +76,7 @@ namespace NaokaGo
             naokaConfig.RuntimeConfig["gameId"] = info.Request.GameId;
             
             PhotonValidateJoinJWTResponse jwtValidationResult =
-                _EventLogic.ValidateJoinJWT((string) ((Hashtable) info.Request.Parameters[248])[(byte) 2]);
+                _EventLogic.ValidateJoinJwt((string) ((Hashtable) info.Request.Parameters[248])[(byte) 2]);
             bool tokenValid = jwtValidationResult.Valid;
 
             if (!tokenValid)
@@ -89,7 +92,7 @@ namespace NaokaGo
             {
                 {"actorNr", 1}, {"userId", userId}, {"ip", ipAddress},
                 {"jwtProperties", jwtValidationResult}, {"instantiated", false},
-                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>(){}}
+                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>()}
             });
             
             _EventLogic.PrepareProperties(1, info.Request.ActorProperties, out var newProperties, out var error);
@@ -106,7 +109,7 @@ namespace NaokaGo
 
         public override void OnJoin(IJoinGameCallInfo info)
         {
-            PhotonValidateJoinJWTResponse jwtValidationResult = _EventLogic.ValidateJoinJWT((string)((Hashtable)info.Request.Parameters[248])[(byte)2]);
+            PhotonValidateJoinJWTResponse jwtValidationResult = _EventLogic.ValidateJoinJwt((string)((Hashtable)info.Request.Parameters[248])[(byte)2]);
             bool tokenValid = jwtValidationResult.Valid;
 
             if (!tokenValid)
@@ -141,7 +144,7 @@ namespace NaokaGo
             {
                 {"actorNr", info.ActorNr},
                 {"userId", userId}, {"ip", ipAddress}, {"jwtProperties", jwtValidationResult}, {"instantiated", false},
-                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>(){}}
+                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>()}
             });
             
             _EventLogic.PrepareProperties(info.ActorNr, info.Request.ActorProperties, out var newProperties, out var error);
@@ -175,15 +178,15 @@ namespace NaokaGo
             
             info.Request.Broadcast = true;
 
-            _EventLogic.PrepareProperties(info.ActorNr, info.Request.Properties, out var temporaryPropertiesHT, out var propertiesError);
+            _EventLogic.PrepareProperties(info.ActorNr, info.Request.Properties, out var temporaryPropertiesHt, out var propertiesError);
             if (propertiesError != "")
             {
                 info.Fail(propertiesError);
                 return;
             }
             
-            info.Request.Properties = temporaryPropertiesHT;
-            info.Request.Parameters[251] = temporaryPropertiesHT; // Better be safe than sorry.
+            info.Request.Properties = temporaryPropertiesHt;
+            info.Request.Parameters[251] = temporaryPropertiesHt; // Better be safe than sorry.
             
             info.Continue();
         }
@@ -208,7 +211,7 @@ namespace NaokaGo
                     info.Fail("Unauthorized.");
                     return;
 
-                case 1: // VoiceDataReceived | uSpeak
+                case 1: // uSpeak
                     info.Continue();
                     break;
 
@@ -238,12 +241,6 @@ namespace NaokaGo
                     break;
 
                 case 8: // ReceiveInterval (Interest List)
-                    // TODO: Implement interest list sync.
-                    // TODO: Channel rollover ->
-                    //       Initial = 100,
-                    //       RolloverPoint = 201 (exclusive)
-                    //       On every evt8, increment by 1, roll back to 100 when 200 is reached and responded to.
-
                     // var eventData8 = (byte[]) info.Request.Parameters[245];
                     // logEventEight(info.ActorNr, eventData8);
 
@@ -313,14 +310,14 @@ namespace NaokaGo
                 case 42: // Updating AvatarEyeHeight property
                     // TODO: Filter out anything that is irrelevant to this event. At the moment, it acts as if its a SetProperties.
                     //       I uh, have no clue what *could* be relevant, what I *do* know is, is `avatarEyeHeight`.
-                    _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data, out var temporaryPropertiesHT, out var propertiesError);
+                    _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data, out var temporaryPropertiesHt, out var propertiesError);
                     if (propertiesError != "")
                     {
                         info.Fail(propertiesError);
                         return;
                     }
                     
-                    naokaConfig.Host.SetProperties(info.ActorNr, temporaryPropertiesHT, null, true);
+                    naokaConfig.Host.SetProperties(info.ActorNr, temporaryPropertiesHt, null, true);
 
                     info.Cancel();
                     break;
@@ -358,16 +355,11 @@ namespace NaokaGo
             }
         }
 
-        private void RegisterCustomTypes()
+        private void LogEventEight(int actorNr, byte[] data)
         {
-        }
-
-        private void logEventEight(int actorNr, byte[] data)
-        {
-            var actorsInEvent8 = data.Length / 6;
             var posInEvent8 = 0;
 
-            var actorInterests = new Dictionary<Int32, Int16>() { };
+            var actorInterests = new Dictionary<Int32, Int16>();
             while (posInEvent8 < data.Length)
             {
                 var viewid = BitConverter.ToInt32(data, posInEvent8);

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -13,8 +12,13 @@ namespace NaokaGo
     /// </summary>
     public class EventLogic
     {
-        public NaokaConfig naokaConfig;
+        private NaokaConfig _naokaConfig;
 
+        public void Setup(NaokaConfig config)
+        {
+            _naokaConfig = config;
+        }
+        
         /// <summary>
         /// SendRatelimiterValues sends event 34 to the target actorNr in order to configure the client rate-limiter.
         /// </summary>
@@ -29,7 +33,7 @@ namespace NaokaGo
                 {2, ratelimitBoolean},
             });
             
-            naokaConfig.Host.BroadcastEvent(
+            _naokaConfig.Host.BroadcastEvent(
                 new List<int> { actorNr },
                 0,
                 34,
@@ -48,14 +52,14 @@ namespace NaokaGo
         public void PrepareProperties(int actorNr, Hashtable currentProperties, out Hashtable newProperties, out string error)
         { 
             var jwtKeys =
-                (PhotonValidateJoinJWTResponse) naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"];
+                (PhotonValidateJoinJWTResponse) _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"];
             var authoritativeUserDict = Util.ParseJwtPropertiesUser(jwtKeys.User);
             var authoritativeAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.AvatarDict);
             var authoritativeFAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.FavatarDict);
             
-            newProperties = new Hashtable() { };
+            newProperties = new Hashtable();
             
-            var temporaryPropertiesHT = new Hashtable()
+            var temporaryPropertiesHt = new Hashtable()
             {
                 {"inVRMode", false},
                 {"showSocialRank", true},
@@ -91,10 +95,10 @@ namespace NaokaGo
                     return;
                 }
 
-                temporaryPropertiesHT["modTag"] = currentProperties["modTag"];
+                temporaryPropertiesHt["modTag"] = currentProperties["modTag"];
             }
 
-            if (currentProperties.Contains("isInvisible") && (bool)currentProperties["isInvisible"] != false)
+            if (currentProperties.Contains("isInvisible") && (bool)currentProperties["isInvisible"])
             {
                 if (!(jwtKeys.User.Tags.Contains("admin_moderator") || jwtKeys.User.DeveloperType == "internal"))
                 {
@@ -102,38 +106,39 @@ namespace NaokaGo
                     return;
                 }
 
-                temporaryPropertiesHT["isInvisible"] = currentProperties["isInvisible"];
+                temporaryPropertiesHt["isInvisible"] = currentProperties["isInvisible"];
             }
 
             if (currentProperties.Contains("avatarEyeHeight"))
-                temporaryPropertiesHT["avatarEyeHeight"] = currentProperties["avatarEyeHeight"];
+                temporaryPropertiesHt["avatarEyeHeight"] = currentProperties["avatarEyeHeight"];
 
             if (currentProperties.Contains("showSocialRank"))
-                temporaryPropertiesHT["showSocialRank"] = (bool)currentProperties["showSocialRank"];
+                temporaryPropertiesHt["showSocialRank"] = (bool)currentProperties["showSocialRank"];
 
             if (currentProperties.Contains("inVRMode"))
-                temporaryPropertiesHT["inVRMode"] = (bool) currentProperties["inVRMode"];
+                temporaryPropertiesHt["inVRMode"] = (bool) currentProperties["inVRMode"];
             
-            temporaryPropertiesHT["user"] = authoritativeUserDict;
-            temporaryPropertiesHT["avatarDict"] = authoritativeAvatarDict;
-            temporaryPropertiesHT["favatarDict"] = authoritativeFAvatarDict;
+            temporaryPropertiesHt["user"] = authoritativeUserDict;
+            temporaryPropertiesHt["avatarDict"] = authoritativeAvatarDict;
+            temporaryPropertiesHt["favatarDict"] = authoritativeFAvatarDict;
 
-            newProperties = temporaryPropertiesHT;
+            newProperties = temporaryPropertiesHt;
             error = "";
         }
+        
         public void SendModerationRequestToAllForActor(int actorId)
         {
-            foreach (var actor in naokaConfig.ActorsInternalProps)
+            foreach (var actor in _naokaConfig.ActorsInternalProps)
             {
                 if (actor.Key != actorId)
                 {
-                    var u = ((string) naokaConfig.ActorsInternalProps[actorId]["userId"]).Substring(4, 6);
+                    var u = ((string) _naokaConfig.ActorsInternalProps[actorId]["userId"]).Substring(4, 6);
                     var data = _EventDataWrapper(0, new Dictionary<byte, object>()
                     {
                         {0, (byte)20},
-                        {3, new string[]{ u }}
+                        {3, new []{ u }}
                     });
-                    naokaConfig.Host.BroadcastEvent(
+                    _naokaConfig.Host.BroadcastEvent(
                         new List<int> { actor.Key },
                         0,
                         33,
@@ -147,7 +152,7 @@ namespace NaokaGo
         public void SendModerationRequestToActor(int actorId)
         {
             List<string> listOfUsers = new List<string>();
-            foreach (var u in naokaConfig.ActorsInternalProps)
+            foreach (var u in _naokaConfig.ActorsInternalProps)
             {
                 if (u.Key != actorId)
                 {
@@ -161,7 +166,7 @@ namespace NaokaGo
                 {0, (byte)20},
                 {3, listOfUsers.ToArray()}
             });
-            naokaConfig.Host.BroadcastEvent(
+            _naokaConfig.Host.BroadcastEvent(
                 new List<int> { actorId },
                 0,
                 33,
@@ -179,7 +184,7 @@ namespace NaokaGo
                 {10, isBlocked},
                 {11, isMuted}
             });
-            naokaConfig.Host.BroadcastEvent(
+            _naokaConfig.Host.BroadcastEvent(
                 new List<int> { targetActor },
                 0,
                 33,
@@ -194,7 +199,7 @@ namespace NaokaGo
         /// <param name="actorNr">The id of the sending actor.</param>
         /// <param name="data">The custom data to wrap.</param>
         /// <returns></returns>
-        public Dictionary<byte, object> _EventDataWrapper(int actorNr, object data)
+        private Dictionary<byte, object> _EventDataWrapper(int actorNr, object data)
         {
             return new Dictionary<byte, object>
             {
@@ -210,7 +215,7 @@ namespace NaokaGo
         /// <param name="message">The message to provide as a reason.</param>
         public void SendExecutiveMessage(int actorNr, string message)
         {
-            naokaConfig.Host.BroadcastEvent(
+            _naokaConfig.Host.BroadcastEvent(
                 new List<int> { actorNr },
                 0,
                 2,
@@ -219,7 +224,7 @@ namespace NaokaGo
             );
 
             // Forcibly kick from Room.
-            naokaConfig.Host.RemoveActor(actorNr, message);
+            _naokaConfig.Host.RemoveActor(actorNr, message);
         }
 
         /// <summary>
@@ -229,25 +234,25 @@ namespace NaokaGo
         /// <param name="userId">The actor's api user id.</param>
         public void PullPartialActorProperties(int actorNr, string userId)
         {
-            var currentProperties = naokaConfig.Host.GameActors.First(x => x.ActorNr == actorNr).Properties.GetProperties();
-            var currentIp = ((PhotonValidateJoinJWTResponse) naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"])
+            var currentProperties = _naokaConfig.Host.GameActors.First(x => x.ActorNr == actorNr).Properties.GetProperties();
+            var currentIp = ((PhotonValidateJoinJWTResponse) _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"])
                 .Ip;
             
-            var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/user?secret={naokaConfig.ApiConfig["PhotonSecret"]}&userId={userId}";
+            var requestUri = $"{_naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/user?secret={_naokaConfig.ApiConfig["PhotonSecret"]}&userId={userId}";
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
 
             var newProperties = JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
             if (newProperties != null && newProperties.Ip == "notset")
                 newProperties.Ip = currentIp;
 
-            naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"] = newProperties;
+            _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"] = newProperties;
             PrepareProperties(actorNr, currentProperties, out var newPropertiesToSet, out var error);
 
             if (error != "")
             {
                 return;
             }
-            naokaConfig.Host.SetProperties(actorNr, newPropertiesToSet, null, true);
+            _naokaConfig.Host.SetProperties(actorNr, newPropertiesToSet, null, true);
         }
 
         /// <summary>
@@ -255,9 +260,9 @@ namespace NaokaGo
         /// </summary>
         /// <param name="token">The JWT token provided by the client.</param>
         /// <returns></returns>
-        public PhotonValidateJoinJWTResponse ValidateJoinJWT(string token)
+        public PhotonValidateJoinJWTResponse ValidateJoinJwt(string token)
         {
-            var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/validateJoin?secret={naokaConfig.ApiConfig["PhotonSecret"]}&roomId={naokaConfig.RuntimeConfig["gameId"]}&jwt={token}";
+            var requestUri = $"{_naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/validateJoin?secret={_naokaConfig.ApiConfig["PhotonSecret"]}&roomId={_naokaConfig.RuntimeConfig["gameId"]}&jwt={token}";
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
             return JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
         }
@@ -266,11 +271,16 @@ namespace NaokaGo
         {
             while (true)
             {
-                var data = new List<int>() { };
-                foreach (var a in naokaConfig.ActorsInternalProps) data.Add(a.Key);
-                foreach (var a in naokaConfig.ActorsInternalProps)
+                if (_naokaConfig.Host.GameActors.Count == 0)
                 {
-                    naokaConfig.Host.BroadcastEvent(
+                    return;
+                }
+                
+                var data = new List<int>();
+                foreach (var a in _naokaConfig.ActorsInternalProps) data.Add(a.Key);
+                foreach (var a in _naokaConfig.ActorsInternalProps)
+                {
+                    _naokaConfig.Host.BroadcastEvent(
                         new List<int> {a.Key},
                         0,
                         8,
@@ -283,13 +293,21 @@ namespace NaokaGo
             }
         }
 
+        /// <summary>
+        ///     This method runs a timer for the client's built-in rate-limiter update tick.
+        /// </summary>
         public async void RunEvent35Timer()
         {
             while (true)
             {
-                foreach (var a in naokaConfig.ActorsInternalProps)
-                { // TODO: Look into Event 35's triggers, as well as its return. Pretty sure this should be an array.
-                    naokaConfig.Host.BroadcastEvent(
+                if (_naokaConfig.Host.GameActors.Count == 0)
+                {
+                    return;
+                }
+                
+                foreach (var a in _naokaConfig.ActorsInternalProps)
+                { // TODO: Look into Event 35's triggers.
+                    _naokaConfig.Host.BroadcastEvent(
                         new List<int> {a.Key},
                         0,
                         35,
