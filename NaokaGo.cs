@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,7 +45,7 @@ namespace NaokaGo
             {
                 {"configuredRateLimits", new Dictionary<byte, int>()},
                 {"ratelimiterBoolean", false},
-                {"maxAccPerIp", 5},
+                {"maxAccsPerIp", 5},
             };
 
             var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/getConfig?secret={naokaConfig.ApiConfig["PhotonSecret"]}";
@@ -133,7 +133,7 @@ namespace NaokaGo
                 if ((string)actorInternalProp.Value["ip"] == ipAddress)
                     ++ipAddressCount;
 
-                if (ipAddressCount > (int) naokaConfig.RuntimeConfig["maxAccPerIp"])
+                if (ipAddressCount > (int) naokaConfig.RuntimeConfig["maxAccsPerIp"])
                 {
                     info.Fail("Max. account limit per instance reached. You've been bapped.");
                     return;
