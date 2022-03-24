@@ -62,7 +62,7 @@ namespace NaokaGo
                 }
 
                 naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
-                naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccountsPerIPAddress;
+                naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccsPerIp;
             }
 
             // Task.Run(_EventLogic.RunEvent8Timer);

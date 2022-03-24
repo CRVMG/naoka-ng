@@ -71,7 +71,7 @@ namespace NaokaGo
     {
         public Dictionary<int, int> RateLimitList;
         public bool RateLimitUnknownBool;
-        public int MaxAccountsPerIPAddress;
+        public int MaxAccsPerIp;
     }
 
     public class PhotonPropUser
