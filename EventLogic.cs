@@ -192,6 +192,11 @@ namespace NaokaGo
                 0
             );
         }
+
+        public void SendProperties(Hashtable props, int ActorNr)
+        {
+            _naokaConfig.Host.BroadcastEvent(0, ActorNr, 0, 42, _EventDataWrapper(ActorNr, props), 0);
+        }
         
         /// <summary>
         ///     Wrapper for use with <c>IPluginHost.BroadcastEvent</c>; Wraps the data in a format that PUN expects.

@@ -317,8 +317,9 @@ namespace NaokaGo
                         return;
                     }
                     
+                    // TODO: Disable older property setting. This behavior has been moved to 42.
                     naokaConfig.Host.SetProperties(info.ActorNr, temporaryPropertiesHt, null, true);
-
+                    _EventLogic.SendProperties(temporaryPropertiesHt, info.ActorNr);
                     info.Cancel();
                     break;
                 default: // Unknown event code; Log and cancel.
