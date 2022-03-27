@@ -258,6 +258,7 @@ namespace NaokaGo
                 return;
             }
             _naokaConfig.Host.SetProperties(actorNr, newPropertiesToSet, null, true);
+            SendProperties(newPropertiesToSet, actorNr);
         }
 
         /// <summary>
