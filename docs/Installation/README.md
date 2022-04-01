@@ -32,3 +32,14 @@ In `LoadBalancing\GameServer`, open `plugin.config` & add aa `Plugin` entry for 
     PhotonApiSecret="The secret you set in Shoya." />
 ```
 
+#### Step 2 - Adding the proper regions to the NameServer
+In `deploy/Nameserver.json`, you will have to add entries for the following list of regions:
+  - `us`
+  - `us/*`
+  - `usw`
+  - `usw/*`
+  - `eu`
+  - `eu/*`
+  - `jp`
+  - `jp/*`
+
