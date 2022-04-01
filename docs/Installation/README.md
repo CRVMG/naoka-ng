@@ -32,7 +32,7 @@ In `LoadBalancing\GameServer`, open `plugin.config` & add aa `Plugin` entry for 
     PhotonApiSecret="The secret you set in Shoya." />
 ```
 
-#### Step 2 - Adding the proper regions to the NameServer
+#### Step 2 - Configuring the NameServer
 In `deploy/Nameserver.json`, you will have to add entries for the following list of regions:
   - `us`
   - `us/*`
@@ -42,4 +42,32 @@ In `deploy/Nameserver.json`, you will have to add entries for the following list
   - `eu/*`
   - `jp`
   - `jp/*`
+
+Additionally, you will have to modify `deploy/NameServer/Nameserver.xml.config` to add the Custom Authentication provider; An example configuration is provided below.
+```xml
+    <CustomAuth Enabled="true" AllowAnonymous="false">
+
+      <!-- Custom Authentication Queue Settings -->
+      <HttpQueueSettings>
+        <MaxConcurrentRequests>50</MaxConcurrentRequests>
+        <MaxQueuedRequests>5000</MaxQueuedRequests>
+        <MaxErrorRequests>100</MaxErrorRequests>
+        <MaxTimedOutRequests>10</MaxTimedOutRequests>
+        <HttpRequestTimeout>30000</HttpRequestTimeout>
+        <ReconnectInterval>60000</ReconnectInterval>
+        <QueueTimeout>20000</QueueTimeout>
+        <MaxBackoffTime>10000</MaxBackoffTime>
+        <LimitHttpResponseMaxSize>20000</LimitHttpResponseMaxSize>
+      </HttpQueueSettings>
+
+      <UseCustomAuthService>true</UseCustomAuthService>
+
+      <AuthProviders>
+        <AuthProvider Name="Custom"
+                      AuthenticationType="0"
+                      AuthUrl="https://{SHOYA_INSTALL_URL}/api/1/photon/ns"
+                      secret="{SHOYA_PHOTON_SECRET}" />
+      </AuthProviders>
+    </CustomAuth>
+```
 
