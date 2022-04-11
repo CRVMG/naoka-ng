@@ -109,6 +109,7 @@ namespace NaokaGo
 
         public override void OnJoin(IJoinGameCallInfo info)
         {
+            
             PhotonValidateJoinJWTResponse jwtValidationResult = _EventLogic.ValidateJoinJwt((string)((Hashtable)info.Request.Parameters[248])[(byte)2]);
             bool tokenValid = jwtValidationResult.Valid;
 
@@ -221,18 +222,6 @@ namespace NaokaGo
                     return;
 
                 case 3: // SendPastEvents; Only sent to MasterClient upon join.
-                    // TODO: Force it to be only sent to MasterClient.
-                    // int[] masterOnly = { naokaConfig.Host.MasterClientId };
-                    // if (info.Request.Actors != masterOnly)
-                    // {
-                        // naokaConfig.Logger.Info("[Naoka]: Event 3 was not sent only to MasterClient");
-                        // info.Fail("Event 3 was not sent only to MasterClient.");
-                        //return;
-                    // }
-
-                    info.Continue();
-                    break;
-
                 case 4: // SyncEvents
                 case 5: // InitialSyncFinished
                 case 6: // ProcessEvent
@@ -296,6 +285,34 @@ namespace NaokaGo
 
                             break;
                         }
+                        case ExecutiveActionTypes.Kick:
+                        {
+                            // TODO: Only process if the user is the instance creator, or world author.
+                            //       Current implementation will allow only the current master of the instance to kick.
+
+                            if (naokaConfig.Host.MasterClientId != info.ActorNr)
+                            {
+                                info.Fail("Only the master client can kick other users.");
+                                break;
+                            }
+                            
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value["userId"].ToString() == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            naokaConfig.ActorsInternalProps.FirstOrDefault(x => x.Value["userId"] == eventData[ExecutiveActionPacket.Target_User]);
+                            if (target.Key == 0)
+                            {
+                                naokaConfig.Logger.Info($"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]})");;
+                                break;
+                            }
+                            
+                            naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value["userId"]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]})");
+                            _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
+                            
+                            break;
+                        }
+                        case ExecutiveActionTypes.Warn:
+                        {
+                            break;
+                        }
                     }
 
                     info.Cancel();
@@ -337,6 +354,11 @@ namespace NaokaGo
                 switch (info.Request.EvCode)
                 {
                     case 202:
+                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] != "VRCPlayer")
+                        {
+                            info.Fail("Only VRCPlayer can be spawned.");
+                            return;
+                        }
                         if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && (bool)naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"]) {
                             info.Fail("Already Instantiated");
                             return;
