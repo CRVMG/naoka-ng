@@ -20,13 +20,13 @@ namespace NaokaGo
         public Dictionary<string, string> ApiConfig;
         public Dictionary<string, object> RuntimeConfig; // Runtime configuration, including rate-limits, max actors per ip, etc.
 
-        public Dictionary<int, Dictionary<string, object>> ActorsInternalProps = new Dictionary<int, Dictionary<string, object>>();
+        public readonly Dictionary<int, CustomActor> ActorsInternalProps = new Dictionary<int, CustomActor>();
     }
 
     public class NaokaGo : PluginBase
     {
-        private NaokaConfig naokaConfig = new NaokaConfig();
-        private EventLogic _EventLogic = new EventLogic();
+        private readonly NaokaConfig naokaConfig = new NaokaConfig();
+        private readonly EventLogic _EventLogic = new EventLogic();
 
         public override string Name => "Naoka";
 
@@ -64,8 +64,7 @@ namespace NaokaGo
                 naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
                 naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccsPerIp;
             }
-
-            // Task.Run(_EventLogic.RunEvent8Timer);
+            
             Task.Run(_EventLogic.RunEvent35Timer);
 
             return base.SetupInstance(host, config, out errorMsg);
@@ -85,15 +84,14 @@ namespace NaokaGo
                 return;
             }
 
-            string userId = jwtValidationResult.User.Id;
-            string ipAddress = jwtValidationResult.Ip;
-
-            naokaConfig.ActorsInternalProps.Add(1, new Dictionary<string, object>()
+            var user = new CustomActor
             {
-                {"actorNr", 1}, {"userId", userId}, {"ip", ipAddress},
-                {"jwtProperties", jwtValidationResult}, {"instantiated", false},
-                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>()}
-            });
+                ActorNr = 1,
+                Id = jwtValidationResult.User.Id,
+                Ip = jwtValidationResult.Ip,
+                JwtProperties = jwtValidationResult
+            };
+            naokaConfig.ActorsInternalProps.Add(1, user);
             
             _EventLogic.PrepareProperties(1, info.Request.ActorProperties, out var newProperties, out var error);
             if (error != "")
@@ -125,13 +123,13 @@ namespace NaokaGo
             int ipAddressCount = 0;
             foreach (var actorInternalProp in naokaConfig.ActorsInternalProps)
             {
-                if ((string) actorInternalProp.Value["userId"] == userId && !jwtValidationResult.User.Tags.Contains("admin_moderator"))
+                if (actorInternalProp.Value.Id == userId && !jwtValidationResult.User.Tags.Contains("admin_moderator"))
                 {
                     info.Fail("User is already in this room.");
                     return;
                 }
 
-                if ((string)actorInternalProp.Value["ip"] == ipAddress)
+                if (actorInternalProp.Value.Ip == ipAddress)
                     ++ipAddressCount;
 
                 if (ipAddressCount > (int) naokaConfig.RuntimeConfig["maxAccsPerIp"])
@@ -140,14 +138,16 @@ namespace NaokaGo
                     return;
                 }
             }
-
-            naokaConfig.ActorsInternalProps.Add(info.ActorNr, new Dictionary<string, object>() 
-            {
-                {"actorNr", info.ActorNr},
-                {"userId", userId}, {"ip", ipAddress}, {"jwtProperties", jwtValidationResult}, {"instantiated", false},
-                {"hasOverriddenUserProps", false}, {"overriddenUserProps", new Dictionary<string, object>()}
-            });
             
+            var user = new CustomActor
+            {
+                ActorNr = info.Request.ActorNr,
+                Id = userId,
+                Ip = ipAddress,
+                JwtProperties = jwtValidationResult
+            };
+            naokaConfig.ActorsInternalProps.Add(user.ActorNr, user);
+
             _EventLogic.PrepareProperties(info.ActorNr, info.Request.ActorProperties, out var newProperties, out var error);
             if (error != "")
             {
@@ -208,7 +208,7 @@ namespace NaokaGo
             switch (info.Request.EvCode)
             {
                 case 0: // Unused event code. Trigger an alert if someone attempts to use this.
-                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 0 (Unused) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]}), This is very suspicious.");
+                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 0 (Unused) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
                     info.Fail("Unauthorized.");
                     return;
 
@@ -217,7 +217,7 @@ namespace NaokaGo
                     break;
 
                 case 2: // ExecutiveMessage
-                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 2 (ExecutiveMessage) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]}), This is very suspicious.");
+                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 2 (ExecutiveMessage) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
                     info.Fail("Unauthorized.");
                     return;
 
@@ -272,9 +272,9 @@ namespace NaokaGo
 
                             foreach (var actor in naokaConfig.ActorsInternalProps)
                             {
-                                if ((int) actor.Value["actorNr"] != info.ActorNr)
+                                if (actor.Value.ActorNr != info.ActorNr)
                                 {
-                                    var u = ((string) actor.Value["userId"]).Substring(4, 6);
+                                    var u = (actor.Value.Id).Substring(4, 6);
                                     var isBlocked = blockedUsers.Contains(u);
                                     var isMuted = mutedUsers.Contains(u);
 
@@ -296,15 +296,14 @@ namespace NaokaGo
                                 break;
                             }
                             
-                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value["userId"].ToString() == eventData[ExecutiveActionPacket.Target_User].ToString());
-                            naokaConfig.ActorsInternalProps.FirstOrDefault(x => x.Value["userId"] == eventData[ExecutiveActionPacket.Target_User]);
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             if (target.Key == 0)
                             {
-                                naokaConfig.Logger.Info($"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]})");;
+                                naokaConfig.Logger.Info($"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                                 break;
                             }
                             
-                            naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value["userId"]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]})");
+                            naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                             _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
                             
                             break;
@@ -319,7 +318,7 @@ namespace NaokaGo
                     break;
 
                 case 40: // UserRecordUpdate
-                    _EventLogic.PullPartialActorProperties(info.ActorNr, (string)naokaConfig.ActorsInternalProps[info.ActorNr]["userId"]);
+                    _EventLogic.PullPartialActorProperties(info.ActorNr, naokaConfig.ActorsInternalProps[info.ActorNr].Id);
 
                     info.Cancel();
                     break;
@@ -359,13 +358,13 @@ namespace NaokaGo
                             info.Fail("Only VRCPlayer can be spawned.");
                             return;
                         }
-                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && (bool)naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"]) {
+                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && naokaConfig.ActorsInternalProps[info.ActorNr].Instantiated) {
                             info.Fail("Already Instantiated");
                             return;
                         }
 
                         if ((string) ((Hashtable) info.Request.Parameters[245])[(byte)0] == "VRCPlayer")
-                            naokaConfig.ActorsInternalProps[info.ActorNr]["instantiated"] = true;
+                            naokaConfig.ActorsInternalProps[info.ActorNr].Instantiated = true;
                         info.Request.Cache = CacheOperations.AddToRoomCache;
                         
                         // Force instantiation at 0,0,0 by removing the Vec3 and Quaternion types from the request.

@@ -51,8 +51,7 @@ namespace NaokaGo
         /// <param name="error">The output variable that will be used to return an error.</param>
         public void PrepareProperties(int actorNr, Hashtable currentProperties, out Hashtable newProperties, out string error)
         { 
-            var jwtKeys =
-                (PhotonValidateJoinJWTResponse) _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"];
+            var jwtKeys = _naokaConfig.ActorsInternalProps[actorNr].JwtProperties;
             var authoritativeUserDict = Util.ParseJwtPropertiesUser(jwtKeys.User);
             var authoritativeAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.AvatarDict);
             var authoritativeFAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.FavatarDict);
@@ -132,7 +131,7 @@ namespace NaokaGo
             {
                 if (actor.Key != actorId)
                 {
-                    var u = ((string) _naokaConfig.ActorsInternalProps[actorId]["userId"]).Substring(4, 6);
+                    var u = (_naokaConfig.ActorsInternalProps[actorId].Id).Substring(4, 6);
                     var data = _EventDataWrapper(0, new Dictionary<byte, object>()
                     {
                         {0, (byte)20},
@@ -156,7 +155,7 @@ namespace NaokaGo
             {
                 if (u.Key != actorId)
                 {
-                    var uid = ((string) u.Value["userId"]).Substring(4, 6);
+                    var uid = u.Value.Id.Substring(4, 6);
                     listOfUsers.Add(uid);
                 }
             }
@@ -240,8 +239,7 @@ namespace NaokaGo
         public void PullPartialActorProperties(int actorNr, string userId)
         {
             var currentProperties = _naokaConfig.Host.GameActors.First(x => x.ActorNr == actorNr).Properties.GetProperties();
-            var currentIp = ((PhotonValidateJoinJWTResponse) _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"])
-                .Ip;
+            var currentIp = _naokaConfig.ActorsInternalProps[actorNr].JwtProperties.Ip;
             
             var requestUri = $"{_naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/user?secret={_naokaConfig.ApiConfig["PhotonSecret"]}&userId={userId}";
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
@@ -250,7 +248,7 @@ namespace NaokaGo
             if (newProperties != null && newProperties.Ip == "notset")
                 newProperties.Ip = currentIp;
 
-            _naokaConfig.ActorsInternalProps[actorNr]["jwtProperties"] = newProperties;
+            _naokaConfig.ActorsInternalProps[actorNr].JwtProperties = newProperties;
             PrepareProperties(actorNr, currentProperties, out var newPropertiesToSet, out var error);
 
             if (error != "")

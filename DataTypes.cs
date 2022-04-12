@@ -1,7 +1,19 @@
 using System.Collections.Generic;
+using System.Text;
 
 namespace NaokaGo
 {
+    public class CustomActor
+    {
+        public int ActorNr;
+        public string Id;
+        public string Ip;
+        public PhotonValidateJoinJWTResponse JwtProperties;
+        public bool Instantiated = false;
+        public bool HasOverriddenUserProps = false;
+        public Dictionary<string, object> OverriddenUserProperties = null;
+    }
+    
     /// <summary>
     ///     Enum for the flags provided in UserRecordUpdate. (EvCode 40)
     /// </summary>
