@@ -263,10 +263,13 @@ namespace NaokaGo
         ///     Validation function for JWTs used during Room creation and joining.
         /// </summary>
         /// <param name="token">The JWT token provided by the client.</param>
+        /// <param name="onCreate">Whether to return additional information (world author, instance creator, capacity)</param>
         /// <returns></returns>
-        public PhotonValidateJoinJWTResponse ValidateJoinJwt(string token)
+        public PhotonValidateJoinJWTResponse ValidateJoinJwt(string token, bool onCreate = false)
         {
             var requestUri = $"{_naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/validateJoin?secret={_naokaConfig.ApiConfig["PhotonSecret"]}&roomId={_naokaConfig.RuntimeConfig["gameId"]}&jwt={token}";
+            if (onCreate) requestUri += "&onCreate=true";
+            
             var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
             return JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
         }

@@ -77,6 +77,11 @@ namespace NaokaGo
         public PhotonPropUser User;
         public PhotonPropAvatarDict AvatarDict;
         public PhotonPropAvatarDict FavatarDict;
+        
+        // The following properties are only present if the call is made with `onCreate=true` in the query.
+        public int WorldCapacity;
+        public string WorldAuthor;
+        public string InstanceCreator;
     }
 
     public class PhotonRuntimeRemoteConfig

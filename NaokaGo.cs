@@ -70,12 +70,17 @@ namespace NaokaGo
             return base.SetupInstance(host, config, out errorMsg);
         }
 
+        /// <summary>
+        /// OnCreateGame is called when a new instance is created. It validates the joiner's JoinJWT.
+        /// It additionally ensures that the world capacity, world author, instance creator, etc. are set. 
+        /// </summary>
+        /// <param name="info"></param>
         public override void OnCreateGame(ICreateGameCallInfo info)
         {
             naokaConfig.RuntimeConfig["gameId"] = info.Request.GameId;
             
             PhotonValidateJoinJWTResponse jwtValidationResult =
-                _EventLogic.ValidateJoinJwt((string) ((Hashtable) info.Request.Parameters[248])[(byte) 2]);
+                _EventLogic.ValidateJoinJwt((string) ((Hashtable) info.Request.Parameters[248])[(byte) 2], true);
             bool tokenValid = jwtValidationResult.Valid;
 
             if (!tokenValid)
@@ -83,7 +88,9 @@ namespace NaokaGo
                 info.Fail("Invalid JWT presented.");
                 return;
             }
-
+            
+            // TODO (awaiting API changes): Implement setting of world capacity, world author, and instance creator.
+            //                              These are currently not set, and are required for moderation to be properly implemented.
             var user = new CustomActor
             {
                 ActorNr = 1,
@@ -104,7 +111,13 @@ namespace NaokaGo
             _EventLogic.SendModerationRequestToActor(1);
             _EventLogic.SendRatelimiterValues(1, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
         }
-
+        
+        /// <summary>
+        /// OnJoin is called when a new actor joins the game. It validates the joiner's JoinJWT.
+        /// It additionally performs additional checks to ensure that the joiner is not already in the game,
+        /// the game does not exceed the maximum number of players, etc.
+        /// </summary>
+        /// <param name="info"></param>
         public override void OnJoin(IJoinGameCallInfo info)
         {
             
@@ -161,13 +174,36 @@ namespace NaokaGo
             _EventLogic.SendModerationRequestToAllForActor(info.ActorNr);
             _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
         }
-
+        
+        /// <summary>
+        /// OnLeave is a post-hook for leaving the game. It removes the actor from the internal list of actors,
+        /// and reduces the number of players in the game (locally and in the api).
+        /// </summary>
+        /// <param name="info"></param>
+        public override void OnLeave(ILeaveGameCallInfo info)
+        {
+            naokaConfig.ActorsInternalProps.Remove(info.ActorNr);
+            // TODO: Reduce player count (local & api).
+            
+            info.Continue();
+        }
+        
+        /// <summary>
+        /// OnCloseGame is called when the instance is about to be removed from the server.
+        /// It handles letting the API know that the instance is no longer available.
+        /// </summary>
+        /// <param name="info"></param>
         public override void OnCloseGame(ICloseGameCallInfo info)
         {
             // TODO: Implement API call for instance removal. (e.g.: Reduce player count for instance in API).
             info.Continue();
         }
 
+        /// <summary>
+        /// BeforeSetProperties is a pre-hook for the client's SetProperties call. It validates the properties being set,
+        /// and if they are valid, it prepares them for a broadcast.
+        /// </summary>
+        /// <param name="info"></param>
         public override void BeforeSetProperties(IBeforeSetPropertiesCallInfo info)
         {
             if (info.Request.ActorNumber == 0 || info.Request.ActorNumber != info.ActorNr)
@@ -191,18 +227,17 @@ namespace NaokaGo
             
             info.Continue();
         }
-
-        public override void OnLeave(ILeaveGameCallInfo info)
-        {
-            naokaConfig.ActorsInternalProps.Remove(info.ActorNr);
-            info.Continue();
-        }
         
         public override void OnSetProperties(ISetPropertiesCallInfo info)
         {
             info.Continue();
         }
 
+        /// <summary>
+        /// OnRaiseEvent is called every time an event is raised. Events are the main way the client communicates with
+        /// the server.
+        /// </summary>
+        /// <param name="info"></param>
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
         {
             switch (info.Request.EvCode)
@@ -230,8 +265,8 @@ namespace NaokaGo
                     break;
 
                 case 8: // ReceiveInterval (Interest List)
-                    // var eventData8 = (byte[]) info.Request.Parameters[245];
-                    // logEventEight(info.ActorNr, eventData8);
+                    // At this time, the interest list is not implemented.
+                    // If someone wants to implement it, feel free to do so, and please make a merge request.
 
                     var parameters = new Dictionary<byte, object>();
                     int[] playerViews = naokaConfig.Host.GameActors.Select(actor => actor.ActorNr).ToArray();
@@ -250,7 +285,6 @@ namespace NaokaGo
                     break;
 
                 case 9: // Udon, AV3Sync, BigData/ChairSync.
-                case 15: // BigData/ChairSync? (Some sources say it's this, while others say it's 9).
                     info.Continue();
                     break;
 
@@ -306,6 +340,9 @@ namespace NaokaGo
                             naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                             _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
                             
+                            // TODO: There is likely a missing event send here, it seems like the client's moderation
+                            //       features seize up in the current implementation.
+                            
                             break;
                         }
                         case ExecutiveActionTypes.Warn:
@@ -323,9 +360,7 @@ namespace NaokaGo
                     info.Cancel();
                     break;
 
-                case 42: // Updating AvatarEyeHeight property
-                    // TODO: Filter out anything that is irrelevant to this event. At the moment, it acts as if its a SetProperties.
-                    //       I uh, have no clue what *could* be relevant, what I *do* know is, is `avatarEyeHeight`.
+                case 42: // Custom implementation of SetProperties
                     _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data, out var temporaryPropertiesHt, out var propertiesError);
                     if (propertiesError != "")
                     {
