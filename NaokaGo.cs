@@ -46,6 +46,9 @@ namespace NaokaGo
                 {"configuredRateLimits", new Dictionary<byte, int>()},
                 {"ratelimiterBoolean", false},
                 {"maxAccsPerIp", 5},
+                {"capacity", 0},
+                {"worldAuthor", ""},
+                {"instanceCreator", ""}
             };
 
             var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/getConfig?secret={naokaConfig.ApiConfig["PhotonSecret"]}";
@@ -89,8 +92,10 @@ namespace NaokaGo
                 return;
             }
             
-            // TODO (awaiting API changes): Implement setting of world capacity, world author, and instance creator.
-            //                              These are currently not set, and are required for moderation to be properly implemented.
+            naokaConfig.RuntimeConfig["capacity"] = jwtValidationResult.WorldCapacity;
+            naokaConfig.RuntimeConfig["worldAuthor"] = jwtValidationResult.WorldAuthor;
+            naokaConfig.RuntimeConfig["instanceCreator"] = jwtValidationResult.InstanceCreator;
+            
             var user = new CustomActor
             {
                 ActorNr = 1,
@@ -130,13 +135,26 @@ namespace NaokaGo
                 return;
             }
 
+            var isStaff = jwtValidationResult.User.Tags.Contains("admin_moderator");
+
             string userId = jwtValidationResult.User.Id;
             string ipAddress = jwtValidationResult.Ip;
 
+            if (naokaConfig.Host.GameActors.Count >= (int)naokaConfig.RuntimeConfig["capacity"] * 2 &&
+                (!isStaff || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId || 
+                 (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId))
+            {
+                // This comment serves as a sanity check for the above if statement;
+                // If the room is above double the capacity, and the joiner is not a staff member,
+                // the world author, or the instance creator, then the joiner is not allowed to join.
+                info.Fail("Game is full.");
+                return;
+            }
+            
             int ipAddressCount = 0;
             foreach (var actorInternalProp in naokaConfig.ActorsInternalProps)
             {
-                if (actorInternalProp.Value.Id == userId && !jwtValidationResult.User.Tags.Contains("admin_moderator"))
+                if (actorInternalProp.Value.Id == userId && !isStaff)
                 {
                     info.Fail("User is already in this room.");
                     return;
@@ -145,7 +163,7 @@ namespace NaokaGo
                 if (actorInternalProp.Value.Ip == ipAddress)
                     ++ipAddressCount;
 
-                if (ipAddressCount > (int) naokaConfig.RuntimeConfig["maxAccsPerIp"])
+                if (ipAddressCount > (int) naokaConfig.RuntimeConfig["maxAccsPerIp"] && !isStaff)
                 {
                     info.Fail("Max. account limit per instance reached. You've been bapped.");
                     return;
@@ -321,12 +339,12 @@ namespace NaokaGo
                         }
                         case ExecutiveActionTypes.Kick:
                         {
-                            // TODO: Only process if the user is the instance creator, or world author.
-                            //       Current implementation will allow only the current master of the instance to kick.
-
-                            if (naokaConfig.Host.MasterClientId != info.ActorNr)
+                            var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
                             {
-                                info.Fail("Only the master client can kick other users.");
+                                // ATTN (api): In public instances, the instance creator **has** to be empty.
+                                info.Fail("Not allowed to kick.");
                                 break;
                             }
                             
@@ -347,6 +365,14 @@ namespace NaokaGo
                         }
                         case ExecutiveActionTypes.Warn:
                         {
+                            var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            {
+                                // ATTN (api): In public instances, the instance creator **has** to be empty.
+                                info.Fail("Not allowed to warn.");
+                                break;
+                            }
                             break;
                         }
                     }
