@@ -134,8 +134,8 @@ namespace NaokaGo
                     var u = (_naokaConfig.ActorsInternalProps[actorId].Id).Substring(4, 6);
                     var data = _EventDataWrapper(0, new Dictionary<byte, object>()
                     {
-                        {0, (byte)20},
-                        {3, new []{ u }}
+                        {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
+                        {ExecutiveActionPacket.Main_Property, new []{ u }}
                     });
                     _naokaConfig.Host.BroadcastEvent(
                         new List<int> { actor.Key },
@@ -162,8 +162,8 @@ namespace NaokaGo
 
             var data = _EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                {0, (byte)20},
-                {3, listOfUsers.ToArray()}
+                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
+                {ExecutiveActionPacket.Main_Property, listOfUsers.ToArray()}
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { actorId },
@@ -178,10 +178,10 @@ namespace NaokaGo
         {
             var data = _EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                {0, (byte)21},
-                {1, actorId},
-                {10, isBlocked},
-                {11, isMuted}
+                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods},
+                {ExecutiveActionPacket.Target_User, actorId},
+                {ExecutiveActionPacket.Blocked_Users, isBlocked},
+                {ExecutiveActionPacket.Muted_Users, isMuted}
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { targetActor },
@@ -192,6 +192,38 @@ namespace NaokaGo
             );
         }
 
+        public void SendModerationWarn(int targetActor, string heading, string message)
+        {
+            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
+            {
+                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Warn},
+                {ExecutiveActionPacket.Heading, heading},
+                {ExecutiveActionPacket.Message, message}
+            });
+            _naokaConfig.Host.BroadcastEvent(
+                new List<int> { targetActor },
+                0,
+                33,
+                data,
+                0
+            );
+        }
+
+        public void SendModerationMicOff(int targetActor)
+        {
+            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
+            {
+                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Mic_Off },
+            });
+            _naokaConfig.Host.BroadcastEvent(
+                new List<int> { targetActor },
+                0,
+                33,
+                data,
+                0
+            );
+        }
+        
         public void SendProperties(Hashtable props, int ActorNr)
         {
             _naokaConfig.Host.BroadcastEvent(0, ActorNr, 0, 42, _EventDataWrapper(ActorNr, props), 0);

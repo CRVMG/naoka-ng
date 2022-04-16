@@ -319,8 +319,8 @@ namespace NaokaGo
                             //   - []string: mutedUsers
                             // The strings are the first six characters of the user's ID, exclusive of `usr_`
 
-                            var blockedUsers = ((string[][]) eventData[3])[0];
-                            var mutedUsers = ((string[][]) eventData[3])[1];
+                            var blockedUsers = ((string[][]) eventData[ExecutiveActionPacket.Main_Property])[0];
+                            var mutedUsers = ((string[][]) eventData[ExecutiveActionPacket.Main_Property])[1];
 
                             foreach (var actor in naokaConfig.ActorsInternalProps)
                             {
@@ -357,10 +357,7 @@ namespace NaokaGo
                             
                             naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                             _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
-                            
-                            // TODO: There is likely a missing event send here, it seems like the client's moderation
-                            //       features seize up in the current implementation.
-                            
+
                             break;
                         }
                         case ExecutiveActionTypes.Warn:
@@ -373,6 +370,24 @@ namespace NaokaGo
                                 info.Fail("Not allowed to warn.");
                                 break;
                             }
+                            
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            _EventLogic.SendModerationWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading], (string)eventData[ExecutiveActionPacket.Message]);
+                            break;
+                        }
+                        case ExecutiveActionTypes.Mic_Off:
+                        {
+                            var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            {
+                                // ATTN (api): In public instances, the instance creator **has** to be empty.
+                                info.Fail("Not allowed to turn the mic of other players off.");
+                                break;
+                            }
+                            
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            _EventLogic.SendModerationMicOff(target.Key);
                             break;
                         }
                     }
