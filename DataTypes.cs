@@ -87,7 +87,7 @@ namespace NaokaGo
     public class PhotonRuntimeRemoteConfig
     {
         public Dictionary<int, int> RateLimitList;
-        public bool RateLimitUnknownBool;
+        public bool RatelimiterActive;
         public int MaxAccsPerIp;
     }
 

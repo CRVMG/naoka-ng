@@ -50,14 +50,13 @@ namespace NaokaGo
         /// <param name="newProperties">The output variable that will be used to return the new hashtable of properties.</param>
         /// <param name="error">The output variable that will be used to return an error.</param>
         public void PrepareProperties(int actorNr, Hashtable currentProperties, out Hashtable newProperties, out string error)
-        { 
+        {
             var jwtKeys = _naokaConfig.ActorsInternalProps[actorNr].JwtProperties;
             var authoritativeUserDict = Util.ParseJwtPropertiesUser(jwtKeys.User);
             var authoritativeAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.AvatarDict);
             var authoritativeFAvatarDict = Util.ParseJwtPropertiesAvatar(jwtKeys.FavatarDict);
             
             newProperties = new Hashtable();
-            
             var temporaryPropertiesHt = new Hashtable()
             {
                 {"inVRMode", false},
@@ -66,7 +65,7 @@ namespace NaokaGo
                 {"modTag", null},
                 {"isInvisible", false}
             };
-
+            
             if (currentProperties.Contains("user"))
             {
                 var customUserDict = (Dictionary<string, object>) currentProperties["user"];

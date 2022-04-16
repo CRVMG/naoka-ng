@@ -44,7 +44,7 @@ namespace NaokaGo
             naokaConfig.RuntimeConfig = new Dictionary<string, object>()
             {
                 {"configuredRateLimits", new Dictionary<byte, int>()},
-                {"ratelimiterBoolean", false},
+                {"ratelimiterActive", false},
                 {"maxAccsPerIp", 5},
                 {"capacity", 0},
                 {"worldAuthor", ""},
@@ -64,7 +64,7 @@ namespace NaokaGo
                         kvp.Value;
                 }
 
-                naokaConfig.RuntimeConfig["ratelimiterBoolean"] = remoteConfig.RateLimitUnknownBool;
+                naokaConfig.RuntimeConfig["ratelimiterActive"] = remoteConfig.RatelimiterActive;
                 naokaConfig.RuntimeConfig["maxAccsPerIp"] = remoteConfig.MaxAccsPerIp;
             }
             
@@ -114,7 +114,7 @@ namespace NaokaGo
             info.Request.ActorProperties = newProperties;
             info.Continue();
             _EventLogic.SendModerationRequestToActor(1);
-            _EventLogic.SendRatelimiterValues(1, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
+            _EventLogic.SendRatelimiterValues(1, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterActive"]);
         }
         
         /// <summary>
@@ -172,7 +172,7 @@ namespace NaokaGo
             
             var user = new CustomActor
             {
-                ActorNr = info.Request.ActorNr,
+                ActorNr = info.ActorNr,
                 Id = userId,
                 Ip = ipAddress,
                 JwtProperties = jwtValidationResult
@@ -190,7 +190,7 @@ namespace NaokaGo
             
             _EventLogic.SendModerationRequestToActor(info.ActorNr);
             _EventLogic.SendModerationRequestToAllForActor(info.ActorNr);
-            _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterBoolean"]);
+            _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterActive"]);
         }
         
         /// <summary>
@@ -303,6 +303,7 @@ namespace NaokaGo
                     break;
 
                 case 9: // Udon, AV3Sync, BigData/ChairSync.
+                case 15:
                     info.Continue();
                     break;
 
