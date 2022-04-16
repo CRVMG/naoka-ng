@@ -24,13 +24,13 @@ namespace NaokaGo
         /// </summary>
         /// <param name="actorNr">The actorNr of the target player.</param>
         /// <param name="ratelimitValues">A dictionary of the event code, and its rate-limit per second.</param>
-        /// <param name="ratelimitBoolean">Unknown.</param>
-        public void SendRatelimiterValues(int actorNr, Dictionary<byte, int> ratelimitValues, bool ratelimitBoolean)
+        /// <param name="ratelimiterActive">Whether the rate-limiter is active.</param>
+        public void SendRatelimiterValues(int actorNr, Dictionary<byte, int> ratelimitValues, bool ratelimiterActive)
         {
             var data = _EventDataWrapper(0, new Dictionary<byte, object>()
             {
                 {0, ratelimitValues},
-                {2, ratelimitBoolean},
+                {2, ratelimiterActive},
             });
             
             _naokaConfig.Host.BroadcastEvent(
