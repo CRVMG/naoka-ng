@@ -200,9 +200,10 @@ namespace NaokaGo
         /// <param name="info"></param>
         public override void OnLeave(ILeaveGameCallInfo info)
         {
-            naokaConfig.ActorsInternalProps.Remove(info.ActorNr);
-            // TODO: Reduce player count (local & api).
+            var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/playerLeft?secret={naokaConfig.ApiConfig["PhotonSecret"]}&roomId={naokaConfig.RuntimeConfig["gameId"]}&userId={naokaConfig.ActorsInternalProps[info.ActorNr].Id}";
+            var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
             
+            naokaConfig.ActorsInternalProps.Remove(info.ActorNr);
             info.Continue();
         }
         
@@ -213,7 +214,8 @@ namespace NaokaGo
         /// <param name="info"></param>
         public override void OnCloseGame(ICloseGameCallInfo info)
         {
-            // TODO: Implement API call for instance removal. (e.g.: Reduce player count for instance in API).
+            var requestUri = $"{naokaConfig.ApiConfig["ApiUrl"]}/api/1/photon/gameClosed?secret={naokaConfig.ApiConfig["PhotonSecret"]}&roomId={naokaConfig.RuntimeConfig["gameId"]}";
+            var apiResponse = new HttpClient().GetAsync(requestUri).Result.Content.ReadAsStringAsync().Result;
             info.Continue();
         }
 
