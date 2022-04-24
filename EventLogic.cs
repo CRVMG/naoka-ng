@@ -63,7 +63,8 @@ namespace NaokaGo
                 {"showSocialRank", true},
                 {"steamUserId", "0"},
                 {"modTag", null},
-                {"isInvisible", false}
+                {"isInvisible", false},
+                {"canModerateInstance", false}
             };
             
             if (currentProperties.Contains("user"))
