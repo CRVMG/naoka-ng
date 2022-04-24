@@ -27,7 +27,7 @@ namespace NaokaGo
         /// <param name="ratelimiterActive">Whether the rate-limiter is active.</param>
         public void SendRatelimiterValues(int actorNr, Dictionary<byte, int> ratelimitValues, bool ratelimiterActive)
         {
-            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
+            var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
             {
                 {0, ratelimitValues},
                 {2, ratelimiterActive},
@@ -124,143 +124,10 @@ namespace NaokaGo
             newProperties = temporaryPropertiesHt;
             error = "";
         }
-        
-        public void SendModerationRequestToAllForActor(int actorId)
-        {
-            foreach (var actor in _naokaConfig.ActorsInternalProps)
-            {
-                if (actor.Key != actorId)
-                {
-                    var u = (_naokaConfig.ActorsInternalProps[actorId].Id).Substring(4, 6);
-                    var data = _EventDataWrapper(0, new Dictionary<byte, object>()
-                    {
-                        {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
-                        {ExecutiveActionPacket.Main_Property, new []{ u }}
-                    });
-                    _naokaConfig.Host.BroadcastEvent(
-                        new List<int> { actor.Key },
-                        0,
-                        33,
-                        data,
-                        0
-                    );
-                }
-            }
-        }
-        
-        public void SendModerationRequestToActor(int actorId)
-        {
-            List<string> listOfUsers = new List<string>();
-            foreach (var u in _naokaConfig.ActorsInternalProps)
-            {
-                if (u.Key != actorId)
-                {
-                    var uid = u.Value.Id.Substring(4, 6);
-                    listOfUsers.Add(uid);
-                }
-            }
 
-            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
-            {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
-                {ExecutiveActionPacket.Main_Property, listOfUsers.ToArray()}
-            });
-            _naokaConfig.Host.BroadcastEvent(
-                new List<int> { actorId },
-                0,
-                33,
-                data,
-                0
-            );
-        }
-
-        public void SendModerationReply(int actorId, int targetActor, bool isBlocked, bool isMuted)
-        {
-            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
-            {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods},
-                {ExecutiveActionPacket.Target_User, actorId},
-                {ExecutiveActionPacket.Blocked_Users, isBlocked},
-                {ExecutiveActionPacket.Muted_Users, isMuted}
-            });
-            _naokaConfig.Host.BroadcastEvent(
-                new List<int> { targetActor },
-                0,
-                33,
-                data,
-                0
-            );
-        }
-
-        public void SendModerationWarn(int targetActor, string heading, string message)
-        {
-            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
-            {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Warn},
-                {ExecutiveActionPacket.Heading, heading},
-                {ExecutiveActionPacket.Message, message}
-            });
-            _naokaConfig.Host.BroadcastEvent(
-                new List<int> { targetActor },
-                0,
-                33,
-                data,
-                0
-            );
-        }
-
-        public void SendModerationMicOff(int targetActor)
-        {
-            var data = _EventDataWrapper(0, new Dictionary<byte, object>()
-            {
-                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Mic_Off },
-            });
-            _naokaConfig.Host.BroadcastEvent(
-                new List<int> { targetActor },
-                0,
-                33,
-                data,
-                0
-            );
-        }
-        
         public void SendProperties(Hashtable props, int ActorNr)
         {
-            _naokaConfig.Host.BroadcastEvent(0, ActorNr, 0, 42, _EventDataWrapper(ActorNr, props), 0);
-        }
-        
-        /// <summary>
-        ///     Wrapper for use with <c>IPluginHost.BroadcastEvent</c>; Wraps the data in a format that PUN expects.
-        /// </summary>
-        /// <param name="actorNr">The id of the sending actor.</param>
-        /// <param name="data">The custom data to wrap.</param>
-        /// <returns></returns>
-        private Dictionary<byte, object> _EventDataWrapper(int actorNr, object data)
-        {
-            return new Dictionary<byte, object>
-            {
-                { 245, data },
-                { 254, actorNr }
-            };
-        }
-
-        /// <summary>
-        ///     Authoritative disconnection function; Can be used for various types of kicks.
-        /// </summary>
-        /// <param name="actorNr">The id of the actor to disconnect.</param>
-        /// <param name="message">The message to provide as a reason.</param>
-        public void SendExecutiveMessage(int actorNr, string message)
-        {
-            _naokaConfig.Host.BroadcastEvent(
-                new List<int> { actorNr },
-                0,
-                2,
-                _EventDataWrapper(actorNr, message),
-                0
-            );
-
-            // Forcibly kick from Room.
-            _naokaConfig.Host.RemoveActor(actorNr, message);
+            _naokaConfig.Host.BroadcastEvent(0, ActorNr, 0, 42, Util.EventDataWrapper(ActorNr, props), 0);
         }
 
         /// <summary>
@@ -306,32 +173,6 @@ namespace NaokaGo
             return JsonConvert.DeserializeObject<PhotonValidateJoinJWTResponse>(apiResponse);
         }
 
-        public async void RunEvent8Timer()
-        {
-            while (true)
-            {
-                if (_naokaConfig.Host.GameActors.Count == 0)
-                {
-                    return;
-                }
-                
-                var data = new List<int>();
-                foreach (var a in _naokaConfig.ActorsInternalProps) data.Add(a.Key);
-                foreach (var a in _naokaConfig.ActorsInternalProps)
-                {
-                    _naokaConfig.Host.BroadcastEvent(
-                        new List<int> {a.Key},
-                        0,
-                        8,
-                        _EventDataWrapper(0, data.ToArray()),
-                        0
-                    );
-                }
-
-                await Task.Delay(1000);
-            }
-        }
-
         /// <summary>
         ///     This method runs a timer for the client's built-in rate-limiter update tick.
         /// </summary>
@@ -339,18 +180,13 @@ namespace NaokaGo
         {
             while (true)
             {
-                if (_naokaConfig.Host.GameActors.Count == 0)
-                {
-                    return;
-                }
-                
                 foreach (var a in _naokaConfig.ActorsInternalProps)
                 { // TODO: Look into Event 35's triggers.
                     _naokaConfig.Host.BroadcastEvent(
                         new List<int> {a.Key},
                         0,
                         35,
-                        _EventDataWrapper(0, null),
+                        Util.EventDataWrapper(0, null),
                         0
                     );
                 }

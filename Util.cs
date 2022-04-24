@@ -4,6 +4,22 @@ namespace NaokaGo
 {
     public class Util
     {
+        
+        /// <summary>
+        ///     Wrapper for use with <c>IPluginHost.BroadcastEvent</c>; Wraps the data in a format that PUN expects.
+        /// </summary>
+        /// <param name="actorNr">The id of the sending actor.</param>
+        /// <param name="data">The custom data to wrap.</param>
+        /// <returns></returns>
+        public static Dictionary<byte, object> EventDataWrapper(int actorNr, object data)
+        {
+            return new Dictionary<byte, object>
+            {
+                { 245, data },
+                { 254, actorNr }
+            };
+        }
+        
         public static Dictionary<string, object> ParseJwtPropertiesUser(PhotonPropUser user)
         {
             return new Dictionary<string, object>()

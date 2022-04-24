@@ -27,12 +27,14 @@ namespace NaokaGo
     {
         private readonly NaokaConfig naokaConfig = new NaokaConfig();
         private readonly EventLogic _EventLogic = new EventLogic();
+        private readonly Moderation _Moderation = new Moderation();
 
         public override string Name => "Naoka";
 
         public override bool SetupInstance(IPluginHost host, Dictionary<string, string> config, out string errorMsg)
         {
             _EventLogic.Setup(naokaConfig);
+            _Moderation.Setup(naokaConfig);
             naokaConfig.Logger = host.CreateLogger(Name);
             naokaConfig.Host = host;
             naokaConfig.Config = config;
@@ -113,7 +115,7 @@ namespace NaokaGo
 
             info.Request.ActorProperties = newProperties;
             info.Continue();
-            _EventLogic.SendModerationRequestToActor(1);
+            _Moderation.SendRequestToActor(1);
             _EventLogic.SendRatelimiterValues(1, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterActive"]);
         }
         
@@ -188,8 +190,8 @@ namespace NaokaGo
             info.Request.ActorProperties = newProperties;
             info.Continue();
             
-            _EventLogic.SendModerationRequestToActor(info.ActorNr);
-            _EventLogic.SendModerationRequestToAllForActor(info.ActorNr);
+            _Moderation.SendRequestToActor(info.ActorNr);
+            _Moderation.SendRequestToAllForActor(info.ActorNr);
             _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterActive"]);
         }
         
@@ -333,7 +335,7 @@ namespace NaokaGo
                                     var isBlocked = blockedUsers.Contains(u);
                                     var isMuted = mutedUsers.Contains(u);
 
-                                    _EventLogic.SendModerationReply(info.ActorNr, actor.Key, isBlocked,
+                                    _Moderation.SendReply(info.ActorNr, actor.Key, isBlocked,
                                         isMuted);
                                 }
                             }
@@ -359,7 +361,7 @@ namespace NaokaGo
                             }
                             
                             naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
-                            _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
+                            _Moderation.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
 
                             return;
                         }
@@ -375,7 +377,7 @@ namespace NaokaGo
                             }
                             
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
-                            _EventLogic.SendModerationWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading], (string)eventData[ExecutiveActionPacket.Message]);
+                            _Moderation.SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading], (string)eventData[ExecutiveActionPacket.Message]);
                             return;
                         }
                         case ExecutiveActionTypes.Mic_Off:
@@ -390,7 +392,7 @@ namespace NaokaGo
                             }
                             
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
-                            _EventLogic.SendModerationMicOff(target.Key);
+                            _Moderation.SendMicOff(target.Key);
                             return;
                         }
                     }
@@ -417,6 +419,9 @@ namespace NaokaGo
                     _EventLogic.SendProperties(temporaryPropertiesHt, info.ActorNr);
                     info.Cancel();
                     break;
+                case 60: // PhysBones Permissions
+                    info.Cancel();
+                    return;
                 default: // Unknown event code; Log and cancel.
                     if (info.Request.EvCode < 200)
                     {

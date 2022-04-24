@@ -83,6 +83,7 @@
         <Compile Include="CustomTypes.cs" />
         <Compile Include="DataTypes.cs" />
         <Compile Include="EventLogic.cs" />
+        <Compile Include="Moderation.cs" />
         <Compile Include="NaokaGo.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="Util.cs" />
