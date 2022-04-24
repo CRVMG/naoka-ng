@@ -348,20 +348,20 @@ namespace NaokaGo
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to kick.");
-                                break;
+                                return;
                             }
                             
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             if (target.Key == 0)
                             {
                                 naokaConfig.Logger.Info($"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
-                                break;
+                                return;
                             }
                             
                             naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                             _EventLogic.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
 
-                            break;
+                            return;
                         }
                         case ExecutiveActionTypes.Warn:
                         {
@@ -371,12 +371,12 @@ namespace NaokaGo
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to warn.");
-                                break;
+                                return;
                             }
                             
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             _EventLogic.SendModerationWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading], (string)eventData[ExecutiveActionPacket.Message]);
-                            break;
+                            return;
                         }
                         case ExecutiveActionTypes.Mic_Off:
                         {
@@ -386,12 +386,12 @@ namespace NaokaGo
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to turn the mic of other players off.");
-                                break;
+                                return;
                             }
                             
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             _EventLogic.SendModerationMicOff(target.Key);
-                            break;
+                            return;
                         }
                     }
 
