@@ -82,6 +82,16 @@ namespace NaokaGo
         /// <param name="info"></param>
         public override void OnCreateGame(ICreateGameCallInfo info)
         {
+            // The following statement prevents specific Photon-related exploits that can be used to soft-lock a room.
+            // Thanks Meep!
+            if (info.Request.SuppressRoomEvents || info.Request.RoomFlags % 64 != 0)
+            {
+                info.Fail("Not allowed to create a suppressed room.");
+                return;
+            }
+
+            info.Request.RoomFlags = 35;
+
             naokaConfig.RuntimeConfig["gameId"] = info.Request.GameId;
             
             PhotonValidateJoinJWTResponse jwtValidationResult =
@@ -262,6 +272,7 @@ namespace NaokaGo
         /// <param name="info"></param>
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
         {
+            info.Request.Cache = CacheOperations.DoNotCache;
             switch (info.Request.EvCode)
             {
                 case 0: // Unused event code. Trigger an alert if someone attempts to use this.
@@ -312,6 +323,8 @@ namespace NaokaGo
                     break;
 
                 case 33: // ExecutiveAction
+                    naokaConfig.Logger.Warn($"Received Moderation event from {info.ActorNr}:\n" + 
+                                            $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
                     Dictionary<byte,object> eventData = (Dictionary<byte,object>)info.Request.Parameters[245];
 
                     switch((byte) eventData[ExecutiveActionPacket.Type])
@@ -420,6 +433,8 @@ namespace NaokaGo
                     info.Cancel();
                     break;
                 case 60: // PhysBones Permissions
+                    naokaConfig.Logger.Warn($"Received PhysBones Permission request from {info.ActorNr}:\n" + 
+                                            $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
                     info.Cancel();
                     return;
                 default: // Unknown event code; Log and cancel.
@@ -437,6 +452,30 @@ namespace NaokaGo
                 switch (info.Request.EvCode)
                 {
                     case 202:
+                        int viewIdsStart = info.ActorNr * 10000;
+                        int[] allowedViewIds = new[]
+                        {
+                            viewIdsStart + 1, // VRCPlayer
+                            viewIdsStart + 2, // uSpeak
+                            viewIdsStart + 3, // PlayableController
+                            viewIdsStart + 4, // BigData
+                        };
+
+                        if ((int)((Hashtable)info.Request.Parameters[245])[(byte)7] != allowedViewIds[0])
+                        {
+                            info.Fail("Invalid view id.");
+                            return;
+                        }
+                        
+                        foreach(var viewId in (int[])((Hashtable)info.Request.Parameters[245])[(byte)4])
+                        {
+                            if (!allowedViewIds.Contains(viewId))
+                            {
+                                info.Fail("Invalid view id.");
+                                return;
+                            }
+                        }
+                        
                         if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] != "VRCPlayer")
                         {
                             info.Fail("Only VRCPlayer can be spawned.");
