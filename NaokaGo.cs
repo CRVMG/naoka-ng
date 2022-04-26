@@ -276,28 +276,39 @@ namespace NaokaGo
             switch (info.Request.EvCode)
             {
                 case 0: // Unused event code. Trigger an alert if someone attempts to use this.
-                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 0 (Unused) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
+                {
+                    naokaConfig.Logger.Warn(
+                        $"[Naoka]: EvCode 0 (Unused) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
                     info.Fail("Unauthorized.");
                     return;
+                }
 
                 case 1: // uSpeak
+                {
                     info.Continue();
                     break;
+                }
 
                 case 2: // ExecutiveMessage
-                    naokaConfig.Logger.Warn($"[Naoka]: EvCode 2 (ExecutiveMessage) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
+                {
+                    naokaConfig.Logger.Warn(
+                        $"[Naoka]: EvCode 2 (ExecutiveMessage) called by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}), This is very suspicious.");
                     info.Fail("Unauthorized.");
                     return;
+                }
 
                 case 3: // SendPastEvents; Only sent to MasterClient upon join.
                 case 4: // SyncEvents
                 case 5: // InitialSyncFinished
                 case 6: // ProcessEvent
                 case 7: // Serialization
+                {
                     info.Continue();
                     break;
+                }
 
                 case 8: // ReceiveInterval (Interest List)
+                {
                     // At this time, the interest list is not implemented.
                     // If someone wants to implement it, feel free to do so, and please make a merge request.
 
@@ -307,7 +318,7 @@ namespace NaokaGo
                     parameters.Add(254, 0);
                     SendParameters sendParams = default;
                     naokaConfig.Host.BroadcastEvent(
-                        new List<int> {info.ActorNr},
+                        new List<int> { info.ActorNr },
                         0,
                         8,
                         parameters,
@@ -316,18 +327,22 @@ namespace NaokaGo
 
                     info.Cancel();
                     break;
+                }
 
                 case 9: // Udon, AV3Sync, BigData/ChairSync.
                 case 15:
+                {
                     info.Continue();
                     break;
+                }
 
                 case 33: // ExecutiveAction
-                    naokaConfig.Logger.Warn($"Received Moderation event from {info.ActorNr}:\n" + 
+                {
+                    naokaConfig.Logger.Warn($"Received Moderation event from {info.ActorNr}:\n" +
                                             $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
-                    Dictionary<byte,object> eventData = (Dictionary<byte,object>)info.Request.Parameters[245];
+                    Dictionary<byte, object> eventData = (Dictionary<byte, object>)info.Request.Parameters[245];
 
-                    switch((byte) eventData[ExecutiveActionPacket.Type])
+                    switch ((byte)eventData[ExecutiveActionPacket.Type])
                     {
                         case ExecutiveActionTypes.Request_PlayerMods:
                         {
@@ -337,8 +352,8 @@ namespace NaokaGo
                             //   - []string: mutedUsers
                             // The strings are the first six characters of the user's ID, exclusive of `usr_`
 
-                            var blockedUsers = ((string[][]) eventData[ExecutiveActionPacket.Main_Property])[0];
-                            var mutedUsers = ((string[][]) eventData[ExecutiveActionPacket.Main_Property])[1];
+                            var blockedUsers = ((string[][])eventData[ExecutiveActionPacket.Main_Property])[0];
+                            var mutedUsers = ((string[][])eventData[ExecutiveActionPacket.Main_Property])[1];
 
                             foreach (var actor in naokaConfig.ActorsInternalProps)
                             {
@@ -358,53 +373,66 @@ namespace NaokaGo
                         case ExecutiveActionTypes.Kick:
                         {
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
-                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                                .Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to kick.");
                                 return;
                             }
-                            
-                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                                actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             if (target.Key == 0)
                             {
-                                naokaConfig.Logger.Info($"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                                naokaConfig.Logger.Info(
+                                    $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
                                 return;
                             }
-                            
-                            naokaConfig.Logger.Info($"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
-                            _Moderation.SendExecutiveMessage(target.Key, (string)eventData[ExecutiveActionPacket.Main_Property]);
+
+                            naokaConfig.Logger.Info(
+                                $"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                            _Moderation.SendExecutiveMessage(target.Key,
+                                (string)eventData[ExecutiveActionPacket.Main_Property]);
 
                             return;
                         }
                         case ExecutiveActionTypes.Warn:
                         {
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
-                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                                .Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to warn.");
                                 return;
                             }
-                            
-                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
-                            _Moderation.SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading], (string)eventData[ExecutiveActionPacket.Message]);
+
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                                actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            _Moderation.SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading],
+                                (string)eventData[ExecutiveActionPacket.Message]);
                             return;
                         }
                         case ExecutiveActionTypes.Mic_Off:
                         {
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
-                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags.Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId || (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                                .Contains("admin_moderator");
+                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to turn the mic of other players off.");
                                 return;
                             }
-                            
-                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor => actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+
+                            var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                                actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             _Moderation.SendMicOff(target.Key);
                             return;
                         }
@@ -412,39 +440,52 @@ namespace NaokaGo
 
                     info.Cancel();
                     break;
+                }
 
                 case 40: // UserRecordUpdate
-                    _EventLogic.PullPartialActorProperties(info.ActorNr, naokaConfig.ActorsInternalProps[info.ActorNr].Id);
+                {
+                    _EventLogic.PullPartialActorProperties(info.ActorNr,
+                        naokaConfig.ActorsInternalProps[info.ActorNr].Id);
 
                     info.Cancel();
                     break;
+                }
 
                 case 42: // Custom implementation of SetProperties
-                    _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data, out var temporaryPropertiesHt, out var propertiesError);
+                {
+                    _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data,
+                        out var temporaryPropertiesHt, out var propertiesError);
                     if (propertiesError != "")
                     {
                         info.Fail(propertiesError);
                         return;
                     }
-                    
+
                     // TODO: Disable older property setting. This behavior has been moved to 42.
                     naokaConfig.Host.SetProperties(info.ActorNr, temporaryPropertiesHt, null, true);
                     _EventLogic.SendProperties(temporaryPropertiesHt, info.ActorNr);
                     info.Cancel();
                     break;
+                }
                 case 60: // PhysBones Permissions
-                    naokaConfig.Logger.Warn($"Received PhysBones Permission request from {info.ActorNr}:\n" + 
+                {
+                    naokaConfig.Logger.Warn($"Received PhysBones Permission request from {info.ActorNr}:\n" +
                                             $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
                     info.Cancel();
                     return;
+                }
                 default: // Unknown event code; Log and cancel.
+                {
                     if (info.Request.EvCode < 200)
                     {
                         naokaConfig.Logger.Warn($"[Naoka]: Unknown Event code `{info.Request.EvCode}`.");
-                        naokaConfig.Logger.Warn($"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
+                        naokaConfig.Logger.Warn(
+                            $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
                         info.Cancel();
                     }
+
                     break;
+                }
             }
 
             if (info.Request.EvCode >= 200)
@@ -452,6 +493,7 @@ namespace NaokaGo
                 switch (info.Request.EvCode)
                 {
                     case 202:
+                    {
                         int viewIdsStart = info.ActorNr * 10000;
                         int[] allowedViewIds = new[]
                         {
@@ -466,8 +508,8 @@ namespace NaokaGo
                             info.Fail("Invalid view id.");
                             return;
                         }
-                        
-                        foreach(var viewId in (int[])((Hashtable)info.Request.Parameters[245])[(byte)4])
+
+                        foreach (var viewId in (int[])((Hashtable)info.Request.Parameters[245])[(byte)4])
                         {
                             if (!allowedViewIds.Contains(viewId))
                             {
@@ -475,26 +517,30 @@ namespace NaokaGo
                                 return;
                             }
                         }
-                        
+
                         if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] != "VRCPlayer")
                         {
                             info.Fail("Only VRCPlayer can be spawned.");
                             return;
                         }
-                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" && naokaConfig.ActorsInternalProps[info.ActorNr].Instantiated) {
+
+                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer" &&
+                            naokaConfig.ActorsInternalProps[info.ActorNr].Instantiated)
+                        {
                             info.Fail("Already Instantiated");
                             return;
                         }
 
-                        if ((string) ((Hashtable) info.Request.Parameters[245])[(byte)0] == "VRCPlayer")
+                        if ((string)((Hashtable)info.Request.Parameters[245])[(byte)0] == "VRCPlayer")
                             naokaConfig.ActorsInternalProps[info.ActorNr].Instantiated = true;
                         info.Request.Cache = CacheOperations.AddToRoomCache;
-                        
+
                         // Force instantiation at 0,0,0 by removing the Vec3 and Quaternion types from the request.
                         ((Hashtable)info.Request.Parameters[245]).Remove((byte)1);
                         ((Hashtable)info.Request.Parameters[245]).Remove((byte)2);
 
                         break;
+                    }
                 }
                 info.Continue();
             }
