@@ -397,7 +397,7 @@ namespace NaokaGo
                             _Moderation.SendExecutiveMessage(target.Key,
                                 (string)eventData[ExecutiveActionPacket.Main_Property]);
 
-                            return;
+                            break;
                         }
                         case ExecutiveActionTypes.Warn:
                         {
@@ -416,7 +416,7 @@ namespace NaokaGo
                                 actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             _Moderation.SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading],
                                 (string)eventData[ExecutiveActionPacket.Message]);
-                            return;
+                            break;
                         }
                         case ExecutiveActionTypes.Mic_Off:
                         {
@@ -434,7 +434,7 @@ namespace NaokaGo
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
                                 actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
                             _Moderation.SendMicOff(target.Key);
-                            return;
+                            break;
                         }
                     }
 
@@ -494,7 +494,7 @@ namespace NaokaGo
                 {
                     case 202:
                     {
-                        int viewIdsStart = info.ActorNr * 10000;
+                        int viewIdsStart = info.ActorNr * 100000;
                         int[] allowedViewIds = new[]
                         {
                             viewIdsStart + 1, // VRCPlayer
@@ -505,7 +505,9 @@ namespace NaokaGo
 
                         if ((int)((Hashtable)info.Request.Parameters[245])[(byte)7] != allowedViewIds[0])
                         {
+                            naokaConfig.Logger.Warn($"{info.ActorNr} tried to connect with an invalid main view id: {(int)((Hashtable)info.Request.Parameters[245])[(byte)7]}. Expected: {allowedViewIds[0]}");
                             info.Fail("Invalid view id.");
+                            naokaConfig.Host.RemoveActor(info.ActorNr, "Invalid view id.");
                             return;
                         }
 
@@ -513,7 +515,10 @@ namespace NaokaGo
                         {
                             if (!allowedViewIds.Contains(viewId))
                             {
+                                naokaConfig.Logger.Warn($"User {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id}) tried to connect with an invalid view id: {viewId}.\n" +
+                                                        $"Allowed view ids: {string.Join(", ", allowedViewIds)}");
                                 info.Fail("Invalid view id.");
+                                naokaConfig.Host.RemoveActor(info.ActorNr, "Invalid view id.");
                                 return;
                             }
                         }
