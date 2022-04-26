@@ -84,7 +84,7 @@ namespace NaokaGo
         {
             // The following statement prevents specific Photon-related exploits that can be used to soft-lock a room.
             // Thanks Meep!
-            if (info.Request.SuppressRoomEvents || info.Request.RoomFlags % 64 != 0)
+            if (info.Request.SuppressRoomEvents || info.Request.RoomFlags % 64 == 0)
             {
                 info.Fail("Not allowed to create a suppressed room.");
                 return;
