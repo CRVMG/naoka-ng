@@ -389,6 +389,7 @@ namespace NaokaGo
                             {
                                 naokaConfig.Logger.Info(
                                     $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                                info.Fail("Could not find target user.");
                                 return;
                             }
 
@@ -414,6 +415,13 @@ namespace NaokaGo
 
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
                                 actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            if (target.Key == 0)
+                            {
+                                naokaConfig.Logger.Info(
+                                    $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Warn sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                                info.Fail("Could not find target user.");
+                                return;
+                            }
                             _Moderation.SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading],
                                 (string)eventData[ExecutiveActionPacket.Message]);
                             break;
@@ -433,6 +441,13 @@ namespace NaokaGo
 
                             var target = naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
                                 actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                            if (target.Key == 0)
+                            {
+                                naokaConfig.Logger.Info(
+                                    $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction MicOff sent by {info.ActorNr} ({naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                                info.Fail("Could not find target user.");
+                                return;
+                            }
                             _Moderation.SendMicOff(target.Key);
                             break;
                         }
