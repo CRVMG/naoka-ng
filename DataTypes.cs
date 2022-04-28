@@ -12,6 +12,7 @@ namespace NaokaGo
         public bool Instantiated = false;
         public bool HasOverriddenUserProps = false;
         public Dictionary<string, object> OverriddenUserProperties = null;
+        public List<int> ActorsAllowedToInteract = new List<int>();
     }
     
     /// <summary>

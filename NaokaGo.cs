@@ -484,8 +484,25 @@ namespace NaokaGo
                 }
                 case 60: // PhysBones Permissions
                 {
-                    naokaConfig.Logger.Warn($"Received PhysBones Permission request from {info.ActorNr}:\n" +
-                                            $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
+                    var usersAllowedRequest = (string[])info.Request.Parameters[245];
+                    var usersAllowed = usersAllowedRequest.Select(user =>
+                        naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                            actor.Value.Id == user && actor.Value.ActorNr != info.ActorNr).Key).ToList();
+
+                    if (usersAllowedRequest.Contains(naokaConfig.ActorsInternalProps[info.ActorNr].Id))
+                        usersAllowed.Add(info.ActorNr);
+                    
+                    naokaConfig.ActorsInternalProps[info.ActorNr].ActorsAllowedToInteract = usersAllowed;
+                    
+                    var roomPermissions = new List<int[]>();
+                    foreach (var actor in naokaConfig.ActorsInternalProps)
+                    {
+                        var actorAllowedUsers = actor.Value.ActorsAllowedToInteract;
+                        actorAllowedUsers.Add(actor.Value.ActorNr); // The last element of the array is the actor associated with it.
+                        roomPermissions.Add(actorAllowedUsers.ToArray());
+                    }
+
+                    naokaConfig.Host.BroadcastEvent(0, 0, 0, 60, Util.EventDataWrapper(0, roomPermissions.ToArray()), 0);
                     info.Cancel();
                     return;
                 }
