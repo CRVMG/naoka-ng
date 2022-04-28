@@ -375,8 +375,8 @@ namespace NaokaGo
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
                             var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
                                 .Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
-                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            if (!isStaff && ((string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId))
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to kick.");
@@ -405,8 +405,8 @@ namespace NaokaGo
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
                             var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
                                 .Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
-                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            if (!isStaff && ((string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId))
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to warn.");
@@ -431,8 +431,8 @@ namespace NaokaGo
                             var userId = naokaConfig.ActorsInternalProps[info.ActorNr].Id;
                             var isStaff = naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
                                 .Contains("admin_moderator");
-                            if (!isStaff || (string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
-                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId)
+                            if (!isStaff && ((string)naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                (string)naokaConfig.RuntimeConfig["instanceCreator"] != userId))
                             {
                                 // ATTN (api): In public instances, the instance creator **has** to be empty.
                                 info.Fail("Not allowed to turn the mic of other players off.");
