@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json;
+using Photon.Hive.Plugin;
 
 namespace NaokaGo
 {
@@ -11,7 +14,140 @@ namespace NaokaGo
             _naokaConfig = config;
         }
 
-        
+        /// <summary>
+        /// HandleModerationEvent is called by OnRaiseEvent when the event code is `33`. It is meant to clean up the core switch statement present in `NaokaGo.cs`.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns>A boolean which indicates whether the execution ended cleanly.</returns>
+        public bool HandleModerationEvent(IRaiseEventCallInfo info)
+        {
+            _naokaConfig.Logger.Warn($"Received Moderation event from {info.ActorNr}:\n" +
+                                     $"{JsonConvert.SerializeObject(info.Request.Data, Formatting.Indented)}");
+            var eventData = (Dictionary<byte, object>)info.Request.Parameters[245];
+
+            switch ((byte)eventData[ExecutiveActionPacket.Type])
+            {
+                case ExecutiveActionTypes.Request_PlayerMods:
+                {
+                    // This is a reply to the server's request.
+                    // It contains a String[][]:
+                    //   - []string: blockedUsers
+                    //   - []string: mutedUsers
+                    // The strings are the first six characters of the user's ID, exclusive of `usr_`
+
+                    var blockedUsers = ((string[][])eventData[ExecutiveActionPacket.Main_Property])[0];
+                    var mutedUsers = ((string[][])eventData[ExecutiveActionPacket.Main_Property])[1];
+
+                    foreach (var actor in _naokaConfig.ActorsInternalProps)
+                        if (actor.Value.ActorNr != info.ActorNr)
+                        {
+                            var u = actor.Value.Id.Substring(4, 6);
+                            var isBlocked = blockedUsers.Contains(u);
+                            var isMuted = mutedUsers.Contains(u);
+
+                            SendReply(info.ActorNr, actor.Key, isBlocked,
+                                isMuted);
+                        }
+
+                    return true;
+                }
+                case ExecutiveActionTypes.Kick:
+                {
+                    var userId = _naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                    var isStaff = _naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                        .Contains("admin_moderator");
+                    if (!isStaff && ((string)_naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                     (string)_naokaConfig.RuntimeConfig["instanceCreator"] != userId))
+                    {
+                        // ATTN (api): In public instances, the instance creator **has** to be empty.
+                        info.Fail("Not allowed to kick.");
+                        return false;
+                    }
+
+                    var target = _naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                        actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                    if (target.Key == 0)
+                    {
+                        _naokaConfig.Logger.Info(
+                            $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Kick sent by {info.ActorNr} ({_naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                        info.Fail("Could not find target user.");
+                        return false;
+                    }
+
+                    _naokaConfig.Logger.Info(
+                        $"Kicking {target.Key} ({target.Value.Id}) for ExecutiveAction Kick sent by {info.ActorNr} ({_naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                    SendExecutiveMessage(target.Key,
+                        (string)eventData[ExecutiveActionPacket.Main_Property]);
+
+                    return true;
+                }
+                case ExecutiveActionTypes.Warn:
+                {
+                    var userId = _naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                    var isStaff = _naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                        .Contains("admin_moderator");
+                    if (!isStaff && ((string)_naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                     (string)_naokaConfig.RuntimeConfig["instanceCreator"] != userId))
+                    {
+                        // ATTN (api): In public instances, the instance creator **has** to be empty.
+                        info.Fail("Not allowed to warn.");
+                        return false;
+                    }
+
+                    var target = _naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                        actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                    if (target.Key == 0)
+                    {
+                        _naokaConfig.Logger.Info(
+                            $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction Warn sent by {info.ActorNr} ({_naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                        info.Fail("Could not find target user.");
+                        return false;
+                    }
+
+                    SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading],
+                        (string)eventData[ExecutiveActionPacket.Message]);
+                    return true;
+                }
+                case ExecutiveActionTypes.Mic_Off:
+                {
+                    var userId = _naokaConfig.ActorsInternalProps[info.ActorNr].Id;
+                    var isStaff = _naokaConfig.ActorsInternalProps[info.ActorNr].JwtProperties.User.Tags
+                        .Contains("admin_moderator");
+                    if (!isStaff && ((string)_naokaConfig.RuntimeConfig["worldAuthor"] != userId ||
+                                     (string)_naokaConfig.RuntimeConfig["instanceCreator"] != userId))
+                    {
+                        // ATTN (api): In public instances, the instance creator **has** to be empty.
+                        info.Fail("Not allowed to turn the mic of other players off.");
+                        return false;
+                    }
+
+                    var target = _naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                        actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                    if (target.Key == 0)
+                    {
+                        _naokaConfig.Logger.Info(
+                            $"Could not find target user ({eventData[ExecutiveActionPacket.Target_User]}) for ExecutiveAction MicOff sent by {info.ActorNr} ({_naokaConfig.ActorsInternalProps[info.ActorNr].Id})");
+                        info.Fail("Could not find target user.");
+                        return false;
+                    }
+
+                    SendMicOff(target.Key);
+                    return true;
+                }
+                case ExecutiveActionTypes.Mute_User:
+                {
+                    return false;
+                }
+                case ExecutiveActionTypes.Block_User:
+                {
+                    return false;
+                }
+            }
+
+            info.Cancel();
+            return true;
+        }
+
         /// <summary>
         /// SendExecutiveMessage forcibly disconnects a user from the room.
         /// </summary>
@@ -30,7 +166,7 @@ namespace NaokaGo
             // Forcibly kick from Room.
             _naokaConfig.Host.RemoveActor(actorNr, message);
         }
-        
+
         /// <summary>
         /// SendRequestToAllForActor sends a Request_PlayerMods for the player to all players in the room.
         /// </summary>
@@ -38,14 +174,13 @@ namespace NaokaGo
         public void SendRequestToAllForActor(int actorId)
         {
             foreach (var actor in _naokaConfig.ActorsInternalProps)
-            {
                 if (actor.Key != actorId)
                 {
-                    var u = (_naokaConfig.ActorsInternalProps[actorId].Id).Substring(4, 6);
+                    var u = _naokaConfig.ActorsInternalProps[actorId].Id.Substring(4, 6);
                     var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
                     {
-                        {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
-                        {ExecutiveActionPacket.Main_Property, new []{ u }}
+                        { ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods },
+                        { ExecutiveActionPacket.Main_Property, new[] { u } }
                     });
                     _naokaConfig.Host.BroadcastEvent(
                         new List<int> { actor.Key },
@@ -55,29 +190,26 @@ namespace NaokaGo
                         0
                     );
                 }
-            }
         }
-        
+
         /// <summary>
         /// SendRequestToActor sends a Request_PlayerMods for every player in the room to the player.
         /// </summary>
         /// <param name="actorId"></param>
         public void SendRequestToActor(int actorId)
         {
-            List<string> listOfUsers = new List<string>();
+            var listOfUsers = new List<string>();
             foreach (var u in _naokaConfig.ActorsInternalProps)
-            {
                 if (u.Key != actorId)
                 {
                     var uid = u.Value.Id.Substring(4, 6);
                     listOfUsers.Add(uid);
                 }
-            }
 
             var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods},
-                {ExecutiveActionPacket.Main_Property, listOfUsers.ToArray()}
+                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Request_PlayerMods },
+                { ExecutiveActionPacket.Main_Property, listOfUsers.ToArray() }
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { actorId },
@@ -87,7 +219,7 @@ namespace NaokaGo
                 0
             );
         }
-        
+
         /// <summary>
         /// SendReply sends a Reply_PlayerMods to the player.
         /// </summary>
@@ -99,10 +231,10 @@ namespace NaokaGo
         {
             var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods},
-                {ExecutiveActionPacket.Target_User, actorId},
-                {ExecutiveActionPacket.Blocked_Users, isBlocked},
-                {ExecutiveActionPacket.Muted_Users, isMuted}
+                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods },
+                { ExecutiveActionPacket.Target_User, actorId },
+                { ExecutiveActionPacket.Blocked_Users, isBlocked },
+                { ExecutiveActionPacket.Muted_Users, isMuted }
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { targetActor },
@@ -112,7 +244,7 @@ namespace NaokaGo
                 0
             );
         }
-        
+
         /// <summary>
         /// SendWarn sends a warning to the target player.
         /// </summary>
@@ -123,9 +255,9 @@ namespace NaokaGo
         {
             var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                {ExecutiveActionPacket.Type, ExecutiveActionTypes.Warn},
-                {ExecutiveActionPacket.Heading, heading},
-                {ExecutiveActionPacket.Message, message}
+                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Warn },
+                { ExecutiveActionPacket.Heading, heading },
+                { ExecutiveActionPacket.Message, message }
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { targetActor },
@@ -144,7 +276,7 @@ namespace NaokaGo
         {
             var data = Util.EventDataWrapper(0, new Dictionary<byte, object>()
             {
-                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Mic_Off },
+                { ExecutiveActionPacket.Type, ExecutiveActionTypes.Mic_Off }
             });
             _naokaConfig.Host.BroadcastEvent(
                 new List<int> { targetActor },
