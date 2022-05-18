@@ -49,7 +49,7 @@ namespace NaokaGo
                                 isMuted);
                         }
 
-                    return true;
+                    break;
                 }
                 case ExecutiveActionTypes.Kick:
                 {
@@ -79,7 +79,7 @@ namespace NaokaGo
                     SendExecutiveMessage(target.Key,
                         (string)eventData[ExecutiveActionPacket.Main_Property]);
 
-                    return true;
+                    break;
                 }
                 case ExecutiveActionTypes.Warn:
                 {
@@ -106,7 +106,7 @@ namespace NaokaGo
 
                     SendWarn(target.Key, (string)eventData[ExecutiveActionPacket.Heading],
                         (string)eventData[ExecutiveActionPacket.Message]);
-                    return true;
+                    break;
                 }
                 case ExecutiveActionTypes.Mic_Off:
                 {
@@ -132,15 +132,58 @@ namespace NaokaGo
                     }
 
                     SendMicOff(target.Key);
-                    return true;
+                    break;
                 }
                 case ExecutiveActionTypes.Mute_User:
                 {
-                    return false;
+                    var targetUser = _naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                        actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                    
+                    if (targetUser.Key == 0)
+                    {
+                        info.Fail("Could not find target user.");
+                        return false;
+                    }
+                    
+                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
+                                     new UserModeration
+                    {
+                        ActorNr = targetUser.Key,
+                        Id = targetUser.Value.Id
+                    };
+
+                    moderation.IsMuted = (bool)eventData[ExecutiveActionPacket.Main_Property];
+                    _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.RemoveAll(actor => actor.ActorNr == targetUser.Key);
+                    _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.Add(moderation);
+                    
+                    SendModerationAction(info.ActorNr, targetUser.Key);
+
+                    break;
                 }
                 case ExecutiveActionTypes.Block_User:
                 {
-                    return false;
+                    var targetUser = _naokaConfig.ActorsInternalProps.FirstOrDefault(actor =>
+                        actor.Value.Id == eventData[ExecutiveActionPacket.Target_User].ToString());
+                    
+                    if (targetUser.Key == 0)
+                    {
+                        info.Fail("Could not find target user.");
+                        return false;
+                    }
+                    
+                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
+                                     new UserModeration
+                                     {
+                                         ActorNr = targetUser.Key,
+                                         Id = targetUser.Value.Id
+                                     };
+
+                    moderation.IsBlocked = (bool)eventData[ExecutiveActionPacket.Main_Property];
+                    _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.RemoveAll(actor => actor.ActorNr == targetUser.Key);
+                    _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.Add(moderation);
+                    
+                    SendModerationAction(info.ActorNr, targetUser.Key);
+                    break;
                 }
             }
 
@@ -165,6 +208,53 @@ namespace NaokaGo
 
             // Forcibly kick from Room.
             _naokaConfig.Host.RemoveActor(actorNr, message);
+        }
+
+        public void SendModerationAction(int source, int target)
+        {
+            var sourceModeration = _naokaConfig.ActorsInternalProps[source].UserModerations.FirstOrDefault(actor => actor.ActorNr == target) ??
+                                   new UserModeration
+            {
+                ActorNr = target,
+                Id = _naokaConfig.ActorsInternalProps[target].Id
+            };
+
+            var targetModeration = _naokaConfig.ActorsInternalProps[target].UserModerations.FirstOrDefault(actor => actor.ActorNr == source) ??
+                                   new UserModeration
+                                   {
+                                       ActorNr = source,
+                                       Id = _naokaConfig.ActorsInternalProps[source].Id
+                                   };
+            
+            // Send the source's moderation to the target.
+            _naokaConfig.Host.BroadcastEvent(
+                new List<int> { target },
+                0,
+                33,
+                Util.EventDataWrapper(0, new Dictionary<byte, object>
+                {
+                    { ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods },
+                    { ExecutiveActionPacket.Target_User, source },
+                    { ExecutiveActionPacket.Muted_Users, sourceModeration.IsMuted },
+                    { ExecutiveActionPacket.Blocked_Users, sourceModeration.IsBlocked }
+                }),
+                0
+            );
+            
+            // Send the target's moderation to the source.
+            _naokaConfig.Host.BroadcastEvent(
+                new List<int> { source },
+                0,
+                33,
+                Util.EventDataWrapper(0, new Dictionary<byte, object>
+                {
+                    { ExecutiveActionPacket.Type, ExecutiveActionTypes.Reply_PlayerMods },
+                    { ExecutiveActionPacket.Target_User, target },
+                    { ExecutiveActionPacket.Muted_Users, targetModeration.IsMuted },
+                    { ExecutiveActionPacket.Blocked_Users, targetModeration.IsBlocked }
+                }),
+                0
+            );
         }
 
         /// <summary>

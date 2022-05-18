@@ -203,6 +203,7 @@ namespace NaokaGo
             _Moderation.SendRequestToActor(info.ActorNr);
             _Moderation.SendRequestToAllForActor(info.ActorNr);
             _EventLogic.SendRatelimiterValues(info.ActorNr, (Dictionary<byte,int>)naokaConfig.RuntimeConfig["configuredRateLimits"], (bool)naokaConfig.RuntimeConfig["ratelimiterActive"]);
+            _EventLogic.AnnouncePhysBonesPermissions();
         }
         
         /// <summary>
@@ -382,16 +383,8 @@ namespace NaokaGo
                         usersAllowed.Add(info.ActorNr);
                     
                     naokaConfig.ActorsInternalProps[info.ActorNr].ActorsAllowedToInteract = usersAllowed;
-                    
-                    var roomPermissions = new List<int[]>();
-                    foreach (var actor in naokaConfig.ActorsInternalProps)
-                    {
-                        var actorAllowedUsers = actor.Value.ActorsAllowedToInteract;
-                        actorAllowedUsers.Add(actor.Value.ActorNr); // The last element of the array is the actor associated with it.
-                        roomPermissions.Add(actorAllowedUsers.ToArray());
-                    }
 
-                    naokaConfig.Host.BroadcastEvent(0, 0, 0, 60, Util.EventDataWrapper(0, roomPermissions.ToArray()), 0);
+                    _EventLogic.AnnouncePhysBonesPermissions();
                     info.Cancel();
                     return;
                 }

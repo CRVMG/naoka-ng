@@ -158,6 +158,21 @@ namespace NaokaGo
             SendProperties(newPropertiesToSet, actorNr);
         }
 
+
+        public void AnnouncePhysBonesPermissions()
+        {
+            var roomPermissions = new List<int[]>();
+            foreach (var actor in _naokaConfig.ActorsInternalProps)
+            {
+                var actorAllowedUsers = actor.Value.ActorsAllowedToInteract;
+                actorAllowedUsers.Add(actor.Value
+                    .ActorNr); // The last element of the array is the actor associated with it.
+                roomPermissions.Add(actorAllowedUsers.ToArray());
+            }
+
+            _naokaConfig.Host.BroadcastEvent(0, 0, 0, 60, Util.EventDataWrapper(0, roomPermissions.ToArray()), 0);
+        }
+
         /// <summary>
         ///     Validation function for JWTs used during Room creation and joining.
         /// </summary>

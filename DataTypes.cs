@@ -13,6 +13,15 @@ namespace NaokaGo
         public bool HasOverriddenUserProps = false;
         public Dictionary<string, object> OverriddenUserProperties = null;
         public List<int> ActorsAllowedToInteract = new List<int>();
+        public List<UserModeration> UserModerations = new List<UserModeration>();
+    }
+
+    public class UserModeration
+    {
+        public int ActorNr;
+        public string Id;
+        public bool IsMuted = false;
+        public bool IsBlocked = false;
     }
     
     /// <summary>
