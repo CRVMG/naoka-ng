@@ -45,6 +45,21 @@ namespace NaokaGo
                             var isBlocked = blockedUsers.Contains(u);
                             var isMuted = mutedUsers.Contains(u);
 
+                            if (isBlocked || isMuted)
+                            {
+                                var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(moderatedActor => moderatedActor.ActorNr == actor.Key) ??
+                                                 new UserModeration
+                                                 {
+                                                     ActorNr = actor.Key,
+                                                     Id = actor.Value.Id
+                                                 };
+                                moderation.IsMuted = isMuted;
+                                moderation.IsBlocked = isBlocked;
+
+                                _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.RemoveAll(moderatedActor => moderatedActor.ActorNr == actor.Key);
+                                _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.Add(moderation);
+                            }
+                            
                             SendReply(info.ActorNr, actor.Key, isBlocked,
                                 isMuted);
                         }
