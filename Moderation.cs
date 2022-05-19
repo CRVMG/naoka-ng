@@ -47,8 +47,8 @@ namespace NaokaGo
 
                             if (isBlocked || isMuted)
                             {
-                                var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(moderatedActor => moderatedActor.ActorNr == actor.Key) ??
-                                                 new UserModeration // skipcq: CS-R1048
+                                var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(moderatedActor => moderatedActor.ActorNr == actor.Key) ?? // skipcq: CS-R1048
+                                                 new UserModeration
                                                  {
                                                      ActorNr = actor.Key,
                                                      Id = actor.Value.Id
@@ -160,8 +160,8 @@ namespace NaokaGo
                         return false;
                     }
                     
-                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
-                                     new UserModeration // skipcq: CS-R1048
+                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??  // skipcq: CS-R1048
+                                     new UserModeration
                                      {
                                         ActorNr = targetUser.Key,
                                         Id = targetUser.Value.Id
@@ -186,8 +186,8 @@ namespace NaokaGo
                         return false;
                     }
                     
-                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
-                                     new UserModeration // skipcq: CS-R1048
+                    var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??  // skipcq: CS-R1048
+                                     new UserModeration
                                      {
                                          ActorNr = targetUser.Key,
                                          Id = targetUser.Value.Id
