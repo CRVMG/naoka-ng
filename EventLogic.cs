@@ -70,19 +70,16 @@ namespace NaokaGo
             if (currentProperties.Contains("user"))
             {
                 var customUserDict = (Dictionary<string, object>) currentProperties["user"];
-                if (customUserDict.ContainsKey("displayName"))
+                if (customUserDict.TryGetValue("displayName", out var dn) && (string) dn != jwtKeys.User.DisplayName)
                 {
-                    if ((string) customUserDict["displayName"] != jwtKeys.User.DisplayName)
+                    if (!(jwtKeys.User.Tags.Contains("admin_moderator") ||
+                          jwtKeys.User.DeveloperType == "internal"))
                     {
-                        if (!(jwtKeys.User.Tags.Contains("admin_moderator") ||
-                              jwtKeys.User.DeveloperType == "internal"))
-                        {
-                            error = "Can't set user->displayName";
-                            return;
-                        }
-
-                        authoritativeUserDict["displayName"] = customUserDict["displayName"];
+                        error = "Can't set user->displayName";
+                        return;
                     }
+
+                    authoritativeUserDict["displayName"] = dn;
                 }
             }
 

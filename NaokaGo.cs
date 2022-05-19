@@ -404,7 +404,7 @@ namespace NaokaGo
 
             if (info.Request.EvCode >= 200)
             {
-                switch (info.Request.EvCode)
+                switch (info.Request.EvCode) // no default -> info.Continue called below skipcq: CS-W1009
                 {
                     case 202:
                     {

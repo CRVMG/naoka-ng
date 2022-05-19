@@ -200,6 +200,12 @@ namespace NaokaGo
                     SendModerationAction(info.ActorNr, targetUser.Key);
                     break;
                 }
+                default:
+                {
+                    _naokaConfig.Logger.Warn($"Executive action not implemented: {(byte)eventData[ExecutiveActionPacket.Type]}");
+                    info.Fail("Unknown executive action type.");
+                    return false;
+                }
             }
 
             info.Cancel();
