@@ -118,7 +118,7 @@ namespace NaokaGo
             naokaConfig.ActorsInternalProps.Add(1, user);
             
             _EventLogic.PrepareProperties(1, info.Request.ActorProperties, out var newProperties, out var error);
-            if (error != "")
+            if (!string.IsNullOrWhiteSpace(error))
             {
                 info.Fail(error);
             }
@@ -192,7 +192,7 @@ namespace NaokaGo
             naokaConfig.ActorsInternalProps.Add(user.ActorNr, user);
 
             _EventLogic.PrepareProperties(info.ActorNr, info.Request.ActorProperties, out var newProperties, out var error);
-            if (error != "")
+            if (!string.IsNullOrWhiteSpace(error))
             {
                 info.Fail(error);
             }
@@ -249,7 +249,7 @@ namespace NaokaGo
             info.Request.Broadcast = true;
 
             _EventLogic.PrepareProperties(info.ActorNr, info.Request.Properties, out var temporaryPropertiesHt, out var propertiesError);
-            if (propertiesError != "")
+            if (!string.IsNullOrWhiteSpace(propertiesError))
             {
                 info.Fail(propertiesError);
                 return;
@@ -360,7 +360,7 @@ namespace NaokaGo
                 {
                     _EventLogic.PrepareProperties(info.ActorNr, (Hashtable)info.Request.Data,
                         out var temporaryPropertiesHt, out var propertiesError);
-                    if (propertiesError != "")
+                    if (!string.IsNullOrWhiteSpace(propertiesError))
                     {
                         info.Fail(propertiesError);
                         return;

@@ -150,7 +150,7 @@ namespace NaokaGo
             _naokaConfig.ActorsInternalProps[actorNr].JwtProperties = newProperties;
             PrepareProperties(actorNr, currentProperties, out var newPropertiesToSet, out var error);
 
-            if (error != "")
+            if (!string.IsNullOrWhiteSpace(error))
             {
                 return;
             }
