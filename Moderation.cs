@@ -48,7 +48,7 @@ namespace NaokaGo
                             if (isBlocked || isMuted)
                             {
                                 var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(moderatedActor => moderatedActor.ActorNr == actor.Key) ??
-                                                 new UserModeration
+                                                 new UserModeration // skipcq: CS-R1048
                                                  {
                                                      ActorNr = actor.Key,
                                                      Id = actor.Value.Id
@@ -161,11 +161,11 @@ namespace NaokaGo
                     }
                     
                     var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
-                                     new UserModeration
-                    {
-                        ActorNr = targetUser.Key,
-                        Id = targetUser.Value.Id
-                    };
+                                     new UserModeration // skipcq: CS-R1048
+                                     {
+                                        ActorNr = targetUser.Key,
+                                        Id = targetUser.Value.Id
+                                     };
 
                     moderation.IsMuted = (bool)eventData[ExecutiveActionPacket.Main_Property];
                     _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.RemoveAll(actor => actor.ActorNr == targetUser.Key);
@@ -187,7 +187,7 @@ namespace NaokaGo
                     }
                     
                     var moderation = _naokaConfig.ActorsInternalProps[info.ActorNr].UserModerations.FirstOrDefault(actor => actor.ActorNr == targetUser.Key) ??
-                                     new UserModeration
+                                     new UserModeration // skipcq: CS-R1048
                                      {
                                          ActorNr = targetUser.Key,
                                          Id = targetUser.Value.Id
