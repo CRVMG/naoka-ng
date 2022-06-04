@@ -43,7 +43,7 @@ In `deploy/Nameserver.json`, you will have to add entries for the following list
   - `jp`
   - `jp/*`
 
-Additionally, you will have to modify `deploy/NameServer/Nameserver.xml.config` to add the Custom Authentication provider; An example configuration is provided below.
+Additionally, you will have to modify `deploy/NameServer/bin/Nameserver.xml.config` to add the Custom Authentication provider; An example configuration is provided below.
 ```xml
     <CustomAuth Enabled="true" AllowAnonymous="false">
 
