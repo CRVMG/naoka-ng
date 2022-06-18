@@ -66,8 +66,8 @@ namespace NaokaGo
                 {"canModerateInstance", false}
             };
 
-            if (!(jwtKeys.User.Tags.Contains("admin_moderator") ||
-                  jwtKeys.User.DeveloperType == "internal"))
+            if (jwtKeys.User.Tags.Contains("admin_moderator") ||
+                  jwtKeys.User.DeveloperType == "internal")
             {
                 temporaryPropertiesHt["modTag"] = "";
             }
