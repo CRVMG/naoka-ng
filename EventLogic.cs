@@ -62,11 +62,16 @@ namespace NaokaGo
                 {"inVRMode", false},
                 {"showSocialRank", true},
                 {"steamUserId", "0"},
-                {"modTag", null},
                 {"isInvisible", false},
                 {"canModerateInstance", false}
             };
-            
+
+            if (jwtKeys.User.Tags.Contains("admin_moderator") ||
+                  jwtKeys.User.DeveloperType == "internal")
+            {
+                temporaryPropertiesHt["modTag"] = "";
+            }
+
             if (currentProperties.Contains("user"))
             {
                 var customUserDict = (Dictionary<string, object>) currentProperties["user"];
@@ -117,7 +122,8 @@ namespace NaokaGo
             temporaryPropertiesHt["user"] = authoritativeUserDict;
             temporaryPropertiesHt["avatarDict"] = authoritativeAvatarDict;
             temporaryPropertiesHt["favatarDict"] = authoritativeFAvatarDict;
-
+            
+            
             newProperties = temporaryPropertiesHt;
             error = "";
         }
